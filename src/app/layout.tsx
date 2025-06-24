@@ -35,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <title>ShiftFlow</title>
+        <title>Horarios</title>
         <meta name="description" content="Planificación Inteligente de Turnos para Hospitales" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

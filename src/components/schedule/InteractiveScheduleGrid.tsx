@@ -469,7 +469,7 @@ export default function InteractiveScheduleGrid({
                 <TableCell
                   className="sticky left-0 bg-muted z-10 truncate"
                   style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                >Total Mañana (M)</TableCell>
+                >TPM</TableCell>
                 <TableCell
                   className="sticky bg-muted z-10 text-center"
                   style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
@@ -483,7 +483,7 @@ export default function InteractiveScheduleGrid({
                 <TableCell
                   className="sticky left-0 bg-muted z-10 truncate"
                   style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                >Total Tarde (T)</TableCell>
+                >TPT</TableCell>
                 <TableCell
                   className="sticky bg-muted z-10 text-center"
                   style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}

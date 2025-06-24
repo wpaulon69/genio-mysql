@@ -83,7 +83,11 @@ export default function SchedulePage() {
   useEffect(() => {
     const schedules = fetchedSchedulesList ?? [];
     setAvailableSchedules(schedules);
-    // Ya no se autoselecciona un horario
+    if (schedules.length > 0 && !selectedScheduleToDisplay) {
+      setSelectedScheduleToDisplay(schedules[0]);
+    } else if (schedules.length === 0) {
+      setSelectedScheduleToDisplay(null);
+    }
   }, [fetchedSchedulesList]);
 
   const selectedServiceForView = useMemo(() => {

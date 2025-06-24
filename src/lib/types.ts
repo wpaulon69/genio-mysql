@@ -91,6 +91,7 @@ export interface ScheduleViolation {
   shiftType?: 'M' | 'T' | 'N' | 'General';
   rule: string;
   details: string;
+  message?: string;
   severity: 'error' | 'warning';
   category?: 'serviceRule' | 'employeeWellbeing';
 }

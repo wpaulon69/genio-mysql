@@ -125,7 +125,7 @@ export default function ScheduleEvaluationDisplay({ score, violations, scoreBrea
                                   {v.date && <><strong>Fecha:</strong> {v.date} </>}
                                   {v.shiftType && v.shiftType !== 'General' && <><strong>Turno:</strong> {v.shiftType} </>}
                                 </p>
-                                <p className="text-sm mt-1.5">{v.details}</p>
+                                <p className="text-sm mt-1.5">{v.message}</p>
                               </div>
                             </div>
                           </li>

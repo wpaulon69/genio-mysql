@@ -95,23 +95,15 @@ export default function DashboardPage() {
       
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-2">
         {features.map((feature) => (
-          <Card key={feature.href} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="p-0">
-               <Image 
-                src={feature.img} 
-                alt={feature.title}
-                width={600}
-                height={400}
-                className="w-full h-48 object-cover"
-                data-ai-hint={feature.aiHint}
-              />
-            </CardHeader>
-            <CardContent className="p-6">
+          <Card key={feature.href} className="flex flex-col justify-between hover:shadow-lg transition-shadow duration-300">
+            <CardHeader>
               <div className="flex items-center mb-3">
                 <feature.icon className="h-8 w-8 text-primary mr-3" />
                 <CardTitle className="font-headline text-xl">{feature.title}</CardTitle>
               </div>
-              <CardDescription className="mb-4 min-h-[40px]">{feature.description}</CardDescription>
+              <CardDescription>{feature.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
               <Button asChild variant="outline" className="w-full">
                 <Link href={feature.href}>
                   Ir a {feature.label || feature.title.split(' ')[1]}

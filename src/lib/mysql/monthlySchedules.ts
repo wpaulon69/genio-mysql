@@ -61,7 +61,10 @@ export async function getMonthlySchedules(
                 'SELECT hd.*, e.nombre as employeeName FROM `horario_detalles` hd JOIN `empleados` e ON hd.employeeId = e.id_empleado WHERE hd.`horario_id` = ?',
                 [scheduleId]
             );
-            const [violations] = await connection.execute('SELECT * FROM `problemashorarios` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+            const [violations] = await connection.execute(
+                'SELECT p.*, e.nombre as employeeName FROM `problemashorarios` p LEFT JOIN `empleados` e ON p.employeeId = e.id_empleado WHERE p.`monthlyScheduleId` = ?',
+                [scheduleId]
+            );
             const [scoreBreakdown] = await connection.execute('SELECT * FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
 
             schedules.push({
@@ -108,7 +111,13 @@ export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'
         }
 
         if (violations && violations.length > 0) {
-            const violationValues = violations.map(v => [scheduleId, v.employeeId, v.date, v.details]);
+            const violationValues = violations.map(v => {
+                // Intenta encontrar el empleado por el nombre en el mensaje de la violación
+                const employeeNameMatch = v.details.match(/^(.*?)\s+tuvo/);
+                const employeeName = employeeNameMatch ? employeeNameMatch[1] : v.employeeName;
+                const employee = employeeName ? allEmployees.find((e: any) => e.nombre === employeeName) : null;
+                return [scheduleId, employee ? employee.id_empleado : v.employeeId, v.date, v.details];
+            });
             await connection.query('INSERT INTO `problemashorarios` (monthlyScheduleId, employeeId, date, message) VALUES ?', [violationValues]);
         }
 

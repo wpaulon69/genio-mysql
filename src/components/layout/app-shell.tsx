@@ -48,7 +48,7 @@ export default function AppShell({ children }: AppShellProps) {
           <SidebarRail />
           <SidebarHeader className="p-4 flex items-center justify-between">
             <Link href="/" className="font-headline text-2xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
-              ShiftFlow
+              Horarios
             </Link>
              <div className="group-data-[collapsible=icon]:hidden">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-primary"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
@@ -61,7 +61,7 @@ export default function AppShell({ children }: AppShellProps) {
             <SidebarNav />
           </SidebarContent>
           <SidebarFooter className="p-4 border-t group-data-[collapsible=icon]:hidden">
-            <p className="text-xs text-muted-foreground">&copy; 2024 ShiftFlow</p>
+            <p className="text-xs text-muted-foreground">&copy; 2024 Horarios</p>
           </SidebarFooter>
         </Sidebar>
         <SidebarInset className="flex-1 flex flex-col">
