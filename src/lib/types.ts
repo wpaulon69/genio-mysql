@@ -130,5 +130,42 @@ export interface InteractiveScheduleGridProps {
   onShiftsChange?: (newShifts: AIShift[]) => void;
   onBackToConfig?: () => void;
   isReadOnly?: boolean;
-  onSave?: (shifts: AIShift[], status: 'published' | 'draft') => void;
+  onSave?: (shifts: AIShift[], status: 'published' | 'draft', evaluationResult: any | null) => void;
+  isSaving?: boolean;
+}
+
+export interface EmployeeReportMetrics {
+  employeeId: string;
+  employeeName: string;
+  totalAssignedDays: number;
+  workDays: number;
+  weekendWorkDays: number;
+  holidayWorkDays: number;
+  weekendRestDays: number;
+  restDays: number;
+  ptoDays: number;
+  sickLeaveDays: number;
+  compOffDays: number;
+  holidaysOff: number;
+  shiftsM: number;
+  shiftsT: number;
+  shiftsN: number;
+  workToRestRatio: string;
+}
+
+export interface EmployeeComparisonReportOutput {
+  reportType: 'employeeComparison';
+  data: EmployeeReportMetrics[];
+  dateRangeLabel: string;
+  serviceNameLabel: string;
+}
+
+export interface ScheduleQualityReportOutput {
+  reportType: 'scheduleQuality';
+  scheduleKey: string;
+  serviceName: string;
+  dateLabel: string;
+  score: number | null | undefined;
+  violations: ScheduleViolation[] | null | undefined;
+  scoreBreakdown: ScoreBreakdown | null | undefined;
 }

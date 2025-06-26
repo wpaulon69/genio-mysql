@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { format, getDaysInMonth, getDate, parse, isValid, getDay as getDayOfWeek } from 'date-fns';
+import { format, getDaysInMonth, getDate, parseISO, isValid, getDay as getDayOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, RefreshCw, Save } from 'lucide-react';
 import { SHIFT_OPTIONS, type GridShiftType, type ShiftOption } from '@/lib/constants/schedule-constants';
@@ -105,12 +105,15 @@ export default function InteractiveScheduleGrid({
   targetService,
   month,
   year,
-  holidays = [], 
+  holidays = [],
   onShiftsChange,
   onBackToConfig,
   isReadOnly = false,
   onSave,
-}: InteractiveScheduleGridProps) { 
+  isSaving = false,
+}: InteractiveScheduleGridProps) {
+  console.log('--- DEBUG GRID: initialShifts ---', JSON.stringify(initialShifts, null, 2));
+  console.log('--- DEBUG GRID: month, year ---', month, year);
   const [editableShifts, setEditableShifts] = useState<AIShift[]>([...initialShifts]);
   const [evaluationResult, setEvaluationResult] = useState<any>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -126,7 +129,8 @@ export default function InteractiveScheduleGrid({
 
   const handleSave = (status: 'published' | 'draft') => {
     if (onSave) {
-      onSave(editableShifts, status);
+      // La evaluación se pasa junto con los turnos
+      onSave(editableShifts, status, evaluationResult);
     }
     setIsSaveModalOpen(false);
   };
@@ -186,7 +190,8 @@ export default function InteractiveScheduleGrid({
             }
         });
     }
-    return Array.from(names).sort((a,b) => a.localeCompare(b));
+    const finalNames = Array.from(names).sort((a,b) => a.localeCompare(b));
+    return finalNames;
   }, [editableShifts, allEmployees, targetService]);
 
 
@@ -199,13 +204,19 @@ export default function InteractiveScheduleGrid({
     relevantEmployeeNames.forEach(name => data[name] = {});
 
     editableShifts.forEach(shift => {
-      if (!shift.date || !shift.employeeName) return; 
-      const parsedShiftDate = parse(shift.date, 'yyyy-MM-dd', new Date());
-      if (!isValid(parsedShiftDate)) return;
+      if (!shift.date || !shift.employeeName) {
+        return; 
+      }
+      const parsedShiftDate = parseISO(shift.date); // Usar parseISO para strings ISO 8601
+      if (!isValid(parsedShiftDate)) {
+        return;
+      }
 
       const currentDisplayMonth = parseInt(month, 10);
       const currentDisplayYear = parseInt(year, 10);
-      if (isNaN(currentDisplayMonth) || isNaN(currentDisplayYear)) return;
+      if (isNaN(currentDisplayMonth) || isNaN(currentDisplayYear)) {
+        return;
+      }
 
       // Asegura que solo se procesen turnos del mes y año actual de la vista
       if (parsedShiftDate.getFullYear() === currentDisplayYear && (parsedShiftDate.getMonth() + 1) === currentDisplayMonth) {
@@ -326,9 +337,14 @@ export default function InteractiveScheduleGrid({
   }, [gridData, dayHeaders, relevantEmployeeNames]);
 
 
-  // Condición para mostrar mensaje si no hay datos para la grilla
-  if (!targetService && initialShifts.length === 0 && relevantEmployeeNames.length === 0) {
-    return (
+  const monthName = format(monthDate, 'MMMM', { locale: es });
+  const currentYearStr = format(monthDate, 'yyyy');
+  const employeeColumnWidth = "180px"; 
+  const totalDColumnWidth = "80px"; 
+
+  return (
+    <>
+      {(!targetService && initialShifts.length === 0 && relevantEmployeeNames.length === 0) ? (
          <Card className="mt-4">
             <CardHeader>
                 <CardTitle>Horario</CardTitle>
@@ -342,194 +358,182 @@ export default function InteractiveScheduleGrid({
                  )}
             </CardContent>
          </Card>
-    );
-  }
-  
-  const monthName = format(monthDate, 'MMMM', { locale: es });
-  const currentYearStr = format(monthDate, 'yyyy');
-  const employeeColumnWidth = "180px"; 
-  const totalDColumnWidth = "80px"; 
-
-  return (
-    <>
-      <Card className="mt-6 w-full">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="font-headline">
-              Horario: {targetService?.nombre_servicio || "Turnos"} - {monthName} {currentYearStr}
-            </CardTitle>
-            {!isReadOnly && (
-              <p className="text-sm text-muted-foreground">
-                Puede editar los turnos manualmente. Los cambios se reflejan para guardar. Use '-' para vaciar una celda.
-              </p>
-            )}
-            {isReadOnly && (
-              <p className="text-sm text-muted-foreground">
-                Vista de solo lectura del horario activo.
-              </p>
-            )}
-          </div>
-          {!isReadOnly && onBackToConfig && (
-            <Button onClick={onBackToConfig} variant="outline">
-              <ChevronLeft className="mr-2 h-4 w-4" /> Volver a Configuración
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {relevantEmployeeNames.length === 0 || dayHeaders.length === 0 ? (
-            <p className="text-muted-foreground">No hay empleados o días para mostrar para el servicio y mes seleccionados, o no se generaron turnos.</p>
-          ) : (
-            <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-              <Table className="min-w-max">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead
-                      className="sticky left-0 bg-card z-20 truncate"
-                      style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                    >Empleado</TableHead>
-                    <TableHead
-                      className="sticky bg-card z-20 text-center"
-                      style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
-                    >Total D</TableHead>
-                    {dayHeaders.map(header => (
-                      <TableHead
-                        key={header.dayNumber}
-                        className={cn(
-                          "text-center w-[70px] min-w-[70px]",
-                          header.isSpecialDay && "bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300"
-                        )}
-                      >
-                        <div>{header.dayNumber}</div>
-                        <div className={cn(
-                          "text-xs",
-                          header.isSpecialDay ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground"
-                        )}>{header.shortName}</div>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(() => {
-                    console.log("[InteractiveScheduleGrid] relevantEmployeeNames before map:", relevantEmployeeNames);
-                    return null; // Helper to log without breaking JSX
-                  })()}
-                  {relevantEmployeeNames.map((employeeName, index) => (
-                    <TableRow key={`${employeeName}-${index}`}>
-                      <TableCell
-                        className="sticky left-0 bg-card z-10 font-medium truncate"
-                        title={employeeName}
-                        style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                      >{employeeName}</TableCell>
-                      <TableCell
-                        className="sticky bg-card z-10 font-medium text-center"
-                        style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
-                      >
-                        {employeeStats[employeeName]?.totalD || 0}
-                      </TableCell>
-                      {dayHeaders.map(header => {
-                        const shift = gridData[employeeName]?.[header.dayNumber];
-                        const currentShiftType = getGridShiftTypeFromAIShift(shift);
-                        const selectedOption = SHIFT_OPTIONS.find(opt => opt.value === currentShiftType);
-                        return (
-                          <TableCell key={`${employeeName}-${header.dayNumber}`} className="p-1 w-[70px] min-w-[70px]">
-                            <Select
-                              value={currentShiftType === '' ? "_EMPTY_" : currentShiftType}
-                              onValueChange={(value) => handleShiftChange(employeeName, header.dayNumber, value as GridShiftType)}
-                              disabled={isReadOnly}
-                            >
-                              <SelectTrigger
-                                className={cn(
-                                  "h-8 w-full text-xs px-2 font-medium rounded-sm",
-                                  getShiftCellColorClass(currentShiftType)
-                                )}
-                              >
-                                <SelectValue placeholder="-">
-                                  {(currentShiftType === '' || currentShiftType === '_EMPTY_' ? SHIFT_OPTIONS.find(opt => opt.value === "_EMPTY_") : selectedOption)
-                                    ? (currentShiftType === '' || currentShiftType === '_EMPTY_' ? SHIFT_OPTIONS.find(opt => opt.value === "_EMPTY_")!.displayValue : selectedOption!.displayValue)
-                                    : '-'
-                                  }
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {SHIFT_OPTIONS.map(opt => (
-                                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                                    {opt.displayValue} - {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-            <TableFooter>
-              <TableRow key="footer-total-m" className="bg-muted font-semibold">
-                <TableCell
-                  className="sticky left-0 bg-muted z-10 truncate"
-                  style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                >TPM</TableCell>
-                <TableCell
-                  className="sticky bg-muted z-10 text-center"
-                  style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
-                >&nbsp;</TableCell>
-                {dayHeaders.map(header => {
-                  const total = dailyTotals[header.dayNumber]?.M;
-                  return <TableCell key={`footer-m-${header.dayNumber}`} className="text-center">{total !== undefined ? total : 0}</TableCell>;
-                })}
-              </TableRow>
-              <TableRow key="footer-total-t" className="bg-muted font-semibold">
-                <TableCell
-                  className="sticky left-0 bg-muted z-10 truncate"
-                  style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                >TPT</TableCell>
-                <TableCell
-                  className="sticky bg-muted z-10 text-center"
-                  style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
-                >&nbsp;</TableCell>
-                {dayHeaders.map(header => {
-                  const total = dailyTotals[header.dayNumber]?.T;
-                  return <TableCell key={`footer-t-${header.dayNumber}`} className="text-center">{total !== undefined ? total : 0}</TableCell>;
-                })}
-              </TableRow>
-              {targetService?.habilitar_turno_noche && (
-                <TableRow key="footer-total-n" className="bg-muted font-semibold">
-                  <TableCell
-                    className="sticky left-0 bg-muted z-10 truncate"
-                    style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                  >Total Noche (N)</TableCell>
-                  <TableCell
-                    className="sticky bg-muted z-10 text-center"
-                    style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
-                  >&nbsp;</TableCell>
-                  {dayHeaders.map(header => {
-                    const total = dailyTotals[header.dayNumber]?.N;
-                    return <TableCell key={`footer-n-${header.dayNumber}`} className="text-center">{total !== undefined ? total : 0}</TableCell>;
-                  })}
-                </TableRow>
+      ) : (
+        <Card className="mt-6 w-full">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="font-headline">
+                Horario: {targetService?.nombre_servicio || "Turnos"} - {monthName} {currentYearStr}
+              </CardTitle>
+              {!isReadOnly && (
+                <p className="text-sm text-muted-foreground">
+                  Puede editar los turnos manualmente. Los cambios se reflejan para guardar. Use '-' para vaciar una celda.
+                </p>
               )}
-              <TableRow key="footer-total-staff" className="bg-muted font-bold text-base">
-                <TableCell
-                  className="sticky left-0 bg-muted z-10 truncate"
-                  style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                >TOTAL PERSONAL</TableCell>
-                <TableCell
-                  className="sticky bg-muted z-10 text-center"
-                  style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
-                >&nbsp;</TableCell>
-                {dayHeaders.map(header => {
-                  const total = dailyTotals[header.dayNumber]?.totalStaff;
-                  return <TableCell key={`footer-staff-${header.dayNumber}`} className="text-center">{total !== undefined ? total : 0}</TableCell>;
-                })}
-              </TableRow>
-            </TableFooter>
-          </Table>
-          <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          )}
-        </CardContent>
-      </Card>
+              {isReadOnly && (
+                <p className="text-sm text-muted-foreground">
+                  Vista de solo lectura del horario activo.
+                </p>
+              )}
+            </div>
+            {!isReadOnly && onBackToConfig && (
+              <Button onClick={onBackToConfig} variant="outline">
+                <ChevronLeft className="mr-2 h-4 w-4" /> Volver a Configuración
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {relevantEmployeeNames.length === 0 || dayHeaders.length === 0 ? (
+              <p className="text-muted-foreground">No hay empleados o días para mostrar para el servicio y mes seleccionados, o no se generaron turnos.</p>
+            ) : (
+              <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+                <Table className="min-w-max">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
+                        className="sticky left-0 bg-card z-20 truncate"
+                        style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
+                      >Empleado</TableHead>
+                      <TableHead
+                        className="sticky bg-card z-20 text-center"
+                        style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
+                      >Total D</TableHead>
+                      {dayHeaders.map(header => (
+                        <TableHead
+                          key={header.dayNumber}
+                          className={cn(
+                            "text-center w-[70px] min-w-[70px]",
+                            header.isSpecialDay && "bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300"
+                          )}
+                        >
+                          <div>{header.dayNumber}</div>
+                          <div className={cn(
+                            "text-xs",
+                            header.isSpecialDay ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground"
+                          )}>{header.shortName}</div>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {relevantEmployeeNames.map((employeeName, index) => (
+                      <TableRow key={`${employeeName}-${index}`}>
+                        <TableCell
+                          className="sticky left-0 bg-card z-10 font-medium truncate"
+                          title={employeeName}
+                          style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
+                        >{employeeName}</TableCell>
+                        <TableCell
+                          className="sticky bg-card z-10 font-medium text-center"
+                          style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
+                        >
+                          {employeeStats[employeeName]?.totalD || 0}
+                        </TableCell>
+                        {dayHeaders.map(header => {
+                          const shift = gridData[employeeName]?.[header.dayNumber];
+                          const currentShiftType = getGridShiftTypeFromAIShift(shift);
+                          const selectedOption = SHIFT_OPTIONS.find(opt => opt.value === currentShiftType);
+                          return (
+                            <TableCell key={`${employeeName}-${header.dayNumber}`} className="p-1 w-[70px] min-w-[70px]">
+                              <Select
+                                value={currentShiftType === '' ? "_EMPTY_" : currentShiftType}
+                                onValueChange={(value) => handleShiftChange(employeeName, header.dayNumber, value as GridShiftType)}
+                                disabled={isReadOnly}
+                              >
+                                <SelectTrigger
+                                  className={cn(
+                                    "h-8 w-full text-xs px-2 font-medium rounded-sm",
+                                    getShiftCellColorClass(currentShiftType)
+                                  )}
+                                >
+                                  <SelectValue placeholder="-">
+                                    {(currentShiftType === '' || currentShiftType === '_EMPTY_' ? SHIFT_OPTIONS.find(opt => opt.value === "_EMPTY_") : selectedOption)
+                                      ? (currentShiftType === '' || currentShiftType === '_EMPTY_' ? SHIFT_OPTIONS.find(opt => opt.value === "_EMPTY_")!.displayValue : selectedOption!.displayValue)
+                                      : '-'
+                                    }
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {SHIFT_OPTIONS.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                      {opt.displayValue} - {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow key="footer-total-m" className="bg-muted font-semibold">
+                      <TableCell
+                        className="sticky left-0 bg-muted z-10 truncate"
+                        style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
+                      >TPM</TableCell>
+                      <TableCell
+                        className="sticky bg-muted z-10 text-center"
+                        style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
+                      ></TableCell>
+                      {dayHeaders.map(header => {
+                        const total = dailyTotals[header.dayNumber]?.M;
+                        return <TableCell key={`footer-m-${header.dayNumber}`} className="text-center">{total || 0}</TableCell>;
+                      })}
+                    </TableRow>
+                    <TableRow key="footer-total-t" className="bg-muted font-semibold">
+                      <TableCell
+                        className="sticky left-0 bg-muted z-10 truncate"
+                        style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
+                      >TPT</TableCell>
+                      <TableCell
+                        className="sticky bg-muted z-10 text-center"
+                        style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
+                      ></TableCell>
+                      {dayHeaders.map(header => {
+                        const total = dailyTotals[header.dayNumber]?.T;
+                        return <TableCell key={`footer-t-${header.dayNumber}`} className="text-center">{total || 0}</TableCell>;
+                      })}
+                    </TableRow>
+                    {targetService?.habilitar_turno_noche && (
+                      <TableRow key="footer-total-n" className="bg-muted font-semibold">
+                        <TableCell
+                          className="sticky left-0 bg-muted z-10 truncate"
+                          style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
+                        >Total Noche (N)</TableCell>
+                        <TableCell
+                          className="sticky bg-muted z-10 text-center"
+                          style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
+                        ></TableCell>
+                        {dayHeaders.map(header => {
+                          const total = dailyTotals[header.dayNumber]?.N;
+                          return <TableCell key={`footer-n-${header.dayNumber}`} className="text-center">{total || 0}</TableCell>;
+                        })}
+                      </TableRow>
+                    )}
+                    <TableRow key="footer-total-staff" className="bg-muted font-bold text-base">
+                      <TableCell
+                        className="sticky left-0 bg-muted z-10 truncate"
+                        style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
+                      >TOTAL PERSONAL</TableCell>
+                      <TableCell
+                        className="sticky bg-muted z-10 text-center"
+                        style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
+                      ></TableCell>
+                      {dayHeaders.map(header => {
+                        const total = dailyTotals[header.dayNumber]?.totalStaff;
+                        return <TableCell key={`footer-staff-${header.dayNumber}`} className="text-center">{total || 0}</TableCell>;
+                      })}
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {evaluationResult && (
         <div className="mt-4">
@@ -543,9 +547,9 @@ export default function InteractiveScheduleGrid({
             <RefreshCw className={`mr-2 h-4 w-4 ${isEvaluating ? 'animate-spin' : ''}`} />
             Re-evaluar Horario
           </Button>
-          <Button onClick={() => setIsSaveModalOpen(true)}>
-            <Save className="mr-2 h-4 w-4" />
-            Guardar Cambios del Horario
+          <Button onClick={() => setIsSaveModalOpen(true)} disabled={isSaving}>
+            {isSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {isSaving ? 'Guardando...' : 'Guardar Cambios del Horario'}
           </Button>
         </div>
       )}
@@ -555,19 +559,19 @@ export default function InteractiveScheduleGrid({
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Acción de Guardado</AlertDialogTitle>
             <AlertDialogDescription>
-              Seleccione cómo desea guardar el horario actual para {targetService?.nombre_servicio} - {month}/{year}.
+              Seleccione cómo desea guardar el horario actual para {targetService?.nombre_servicio} - {monthName} {year}.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col space-y-2">
-            <AlertDialogAction onClick={() => handleSave('published')} className="w-full">
-              Publicar como Nueva Versión
-            </AlertDialogAction>
-            <AlertDialogCancel asChild>
-              <Button onClick={() => handleSave('draft')} className="w-full" variant="outline">
-                Guardar Cambios como Borrador
-              </Button>
-            </AlertDialogCancel>
-            <AlertDialogCancel className="w-full mt-2">Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="sm:flex-col md:flex-row md:justify-end space-y-2 md:space-y-0 md:space-x-2">
+             <Button onClick={() => handleSave('draft')} variant="outline" disabled={isSaving}>
+                {isSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Guardar como Borrador
+            </Button>
+            <Button onClick={() => handleSave('published')} disabled={isSaving}>
+                {isSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Publicar Horario
+            </Button>
+            <AlertDialogCancel disabled={isSaving}>Cancelar</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

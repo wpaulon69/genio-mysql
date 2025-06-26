@@ -58,7 +58,7 @@ export async function getMonthlySchedules(
             const scheduleId = scheduleRow.id;
 
             const [shifts] = await connection.execute(
-                'SELECT hd.*, e.nombre as employeeName FROM `horario_detalles` hd JOIN `empleados` e ON hd.employeeId = e.id_empleado WHERE hd.`horario_id` = ?',
+                'SELECT hd.*, e.nombre as employeeName, s.nombre_servicio as serviceName FROM `horario_detalles` hd JOIN `empleados` e ON hd.employeeId = e.id_empleado JOIN `servicios` s ON hd.serviceId = s.id_servicio WHERE hd.`horario_id` = ?',
                 [scheduleId]
             );
             const [violations] = await connection.execute(
@@ -66,6 +66,11 @@ export async function getMonthlySchedules(
                 [scheduleId]
             );
             const [scoreBreakdown] = await connection.execute('SELECT * FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+
+            console.log(`[DEBUG] Horario ID: ${scheduleId}`);
+            console.log('[DEBUG] Shifts recuperados:', JSON.stringify(shifts, null, 2));
+            console.log('[DEBUG] Violations recuperadas:', JSON.stringify(violations, null, 2));
+            console.log('[DEBUG] Score Breakdown recuperado:', JSON.stringify(scoreBreakdown, null, 2));
 
             schedules.push({
                 ...scheduleRow,
@@ -136,5 +141,130 @@ export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'
     }
 }
 
-// Las funciones update y delete también necesitarían ser actualizadas
-// para manejar las tablas relacionadas.
+export async function updateMonthlySchedule(schedule: MonthlySchedule): Promise<void> {
+    const connection = await getConnection();
+    try {
+        await connection.beginTransaction();
+        const scheduleId = schedule.id;
+
+        // Actualizar el registro principal del horario
+        await connection.execute(
+            'UPDATE horarios SET status = ?, version = ?, responseText = ?, score = ?, updatedAt = ?, horario_nombre = ? WHERE id = ?',
+            [
+                schedule.status ?? null,
+                schedule.version + 1,
+                schedule.responseText ?? null,
+                schedule.score ?? null,
+                Date.now(),
+                schedule.horario_nombre ?? null,
+                scheduleId
+            ]
+        );
+
+        // Borrar detalles antiguos
+        await connection.execute('DELETE FROM `horario_detalles` WHERE `horario_id` = ?', [scheduleId]);
+        await connection.execute('DELETE FROM `problemashorarios` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+        await connection.execute('DELETE FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+
+        const allEmployees = await getEmployees();
+
+        // Insertar nuevos detalles
+        if (schedule.shifts && schedule.shifts.length > 0) {
+            const shiftValues = schedule.shifts.map(s => {
+                 const employee = allEmployees.find((e: any) => e.nombre === s.employeeName);
+                return [scheduleId, employee ? employee.id_empleado : null, schedule.serviceId, s.date, s.startTime, s.endTime, s.notes];
+            });
+            await connection.query('INSERT INTO `horario_detalles` (horario_id, employeeId, serviceId, date, startTime, endTime, notes) VALUES ?', [shiftValues]);
+        }
+
+        if (schedule.violations && schedule.violations.length > 0) {
+            const violationValues = schedule.violations.map(v => {
+                const employee = allEmployees.find((e: any) => e.nombre === v.employeeName);
+                return [scheduleId, employee ? employee.id_empleado : v.employeeId, v.date, v.details];
+            });
+            await connection.query('INSERT INTO `problemashorarios` (monthlyScheduleId, employeeId, date, message) VALUES ?', [violationValues]);
+        }
+
+        if (schedule.scoreBreakdown) {
+            await connection.execute('INSERT INTO `score_breakdowns` (monthlyScheduleId, serviceRules, employeeWellbeing) VALUES (?, ?, ?)', [scheduleId, schedule.scoreBreakdown.serviceRules ?? null, schedule.scoreBreakdown.employeeWellbeing ?? null]);
+        }
+
+        await connection.commit();
+    } catch (error) {
+        await connection.rollback();
+        console.error("Error updating monthly schedule:", error);
+        throw error;
+    } finally {
+        await connection.end();
+    }
+}
+
+export async function getPublishedMonthlySchedule(
+    year: string,
+    month: string,
+    serviceId: string
+): Promise<MonthlySchedule | null> {
+    const schedules = await getMonthlySchedules(year, month, serviceId, 'published');
+    return schedules.length > 0 ? schedules[0] : null;
+}
+
+export async function getSchedulesInDateRange(
+    yearFrom: string,
+    monthFrom: string,
+    yearTo: string,
+    monthTo: string,
+    serviceId?: string
+): Promise<MonthlySchedule[]> {
+    const connection = await getConnection();
+    try {
+        let query = `
+            SELECT * FROM horarios
+            WHERE status = 'published'
+            AND (
+                (year = ? AND month >= ?) OR
+                (year > ? AND year < ?) OR
+                (year = ? AND month <= ?)
+            )
+        `;
+        const params: (string | number)[] = [yearFrom, monthFrom, yearFrom, yearTo, yearTo, monthTo];
+
+        if (serviceId) {
+            query += ' AND serviceId = ?';
+            params.push(serviceId);
+        }
+
+        query += ' ORDER BY year ASC, month ASC';
+
+        const [scheduleRows] = await connection.execute(query, params);
+        const schedules: MonthlySchedule[] = [];
+
+        for (const scheduleRow of scheduleRows as any[]) {
+            const scheduleId = scheduleRow.id;
+
+            const [shifts] = await connection.execute(
+                'SELECT hd.*, e.nombre as employeeName, s.nombre_servicio as serviceName FROM `horario_detalles` hd JOIN `empleados` e ON hd.employeeId = e.id_empleado JOIN `servicios` s ON hd.serviceId = s.id_servicio WHERE hd.`horario_id` = ?',
+                [scheduleId]
+            );
+            const [violations] = await connection.execute(
+                'SELECT p.*, e.nombre as employeeName FROM `problemashorarios` p LEFT JOIN `empleados` e ON p.employeeId = e.id_empleado WHERE p.`monthlyScheduleId` = ?',
+                [scheduleId]
+            );
+            const [scoreBreakdown] = await connection.execute('SELECT * FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+
+            schedules.push({
+                ...scheduleRow,
+                id: scheduleId.toString(),
+                shifts: (shifts as any[]),
+                violations: (violations as any[]),
+                scoreBreakdown: scoreBreakdown && (scoreBreakdown as any).length > 0 ? (scoreBreakdown as any)[0] : null,
+            });
+        }
+        return schedules;
+    } finally {
+        await connection.end();
+    }
+}
+
+export function generateScheduleKey(year: string, month: string, serviceId: string): string {
+    return `${year}-${month}-${serviceId}`;
+}

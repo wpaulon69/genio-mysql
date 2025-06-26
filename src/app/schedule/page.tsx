@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Employee, Service, MonthlySchedule, Holiday } from '@/lib/types';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { Loader2, CalendarSearch, AlertTriangle, Info, UploadCloud, ArchiveIcon } from 'lucide-react';
+import { Loader2, CalendarSearch, AlertTriangle, Info, UploadCloud, ArchiveIcon, Pencil } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,8 @@ import { es } from 'date-fns/locale';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { getGridShiftTypeFromAIShift } from '@/components/schedule/InteractiveScheduleGrid';
+import InteractiveScheduleGrid from '@/components/schedule/InteractiveScheduleGrid'; // Importar InteractiveScheduleGrid
+import type { AIShift } from '@/ai/flows/suggest-shift-schedule'; // Importar AIShift para tipado
 
 const currentYear = new Date().getFullYear();
 const scheduleYears = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
@@ -31,12 +33,20 @@ export default function SchedulePage() {
   const [selectedYearView, setSelectedYearView] = useState<string>(currentYear.toString());
   const [selectedMonthView, setSelectedMonthView] = useState<string>((new Date().getMonth() + 1).toString());
   const [selectedServiceIdView, setSelectedServiceIdView] = useState<string | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState<string>("view-schedule"); // Declarar activeTab
   
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [scheduleToArchiveId, setScheduleToArchiveId] = useState<string | null>(null);
   
   const [availableSchedules, setAvailableSchedules] = useState<MonthlySchedule[]>([]);
   const [selectedScheduleToDisplay, setSelectedScheduleToDisplay] = useState<MonthlySchedule | null>(null);
+  const [scheduleInEdit, setScheduleInEdit] = useState<MonthlySchedule | null>(null);
+
+  useEffect(() => {
+    if (scheduleInEdit) {
+      console.log('--- DEBUG: scheduleInEdit STATE UPDATED ---', JSON.stringify(scheduleInEdit, null, 2));
+    }
+  }, [scheduleInEdit]);
 
   const { data: employees = [], isLoading: isLoadingEmployees, error: errorEmployees } = useQuery<Employee[]>({
     queryKey: ['employees'],
@@ -142,6 +152,55 @@ export default function SchedulePage() {
     }
   };
 
+  const saveScheduleMutation = useMutation({
+    mutationFn: async ({ shifts, status, evaluation }: { shifts: AIShift[]; status: 'published' | 'draft'; evaluation: any }) => {
+      if (!selectedServiceForView || !selectedMonthView || !selectedYearView) {
+        throw new Error("Faltan datos esenciales para guardar el horario (servicio, mes, año).");
+      }
+
+      const scheduleData = {
+        id: scheduleInEdit?.id, // Si existe, es una actualización
+        horario_nombre: scheduleInEdit?.horario_nombre || `Horario ${selectedServiceForView.nombre_servicio} ${scheduleMonths.find(m => m.value === selectedMonthView)?.label} ${selectedYearView}`,
+        id_servicio: selectedServiceForView.id_servicio,
+        mes: parseInt(selectedMonthView),
+        año: parseInt(selectedYearView),
+        shifts: shifts,
+        status: status,
+        score: evaluation?.score || 0,
+        violations: evaluation?.violations || [],
+        scoreBreakdown: evaluation?.scoreBreakdown || {},
+      };
+
+      const method = scheduleData.id ? 'PUT' : 'POST';
+      const url = '/api/monthlySchedules';
+
+      const response = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scheduleData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Error al ${method === 'POST' ? 'crear' : 'actualizar'} el horario.`);
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Horario Guardado", description: `El horario ha sido ${data.status === 'published' ? 'publicado' : 'guardado como borrador'} exitosamente.` });
+      queryClient.invalidateQueries({ queryKey: ['allMonthlySchedules', selectedYearView, selectedMonthView, selectedServiceIdView] });
+      setScheduleInEdit(null); // Limpiar el horario en edición
+      setActiveTab("view-schedule"); // Volver a la vista de horarios
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Error al Guardar", description: error.message });
+    },
+  });
+
+  const handleSaveSchedule = (shifts: AIShift[], status: 'published' | 'draft', evaluation: any) => {
+    saveScheduleMutation.mutate({ shifts, status, evaluation });
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto flex justify-center items-center h-screen">
@@ -168,7 +227,7 @@ export default function SchedulePage() {
         title="Horario de Turnos"
         description="Vea horarios publicados y genere/edite borradores. Los horarios pueden ser guardados o publicados."
       />
-      <Tabs defaultValue="view-schedule" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-1 md:grid-cols-2 md:w-1/2 mb-6">
           <TabsTrigger value="view-schedule">Ver Horario</TabsTrigger>
           <TabsTrigger value="generate-shifts">Generar/Editar Borradores</TabsTrigger>
@@ -274,19 +333,31 @@ export default function SchedulePage() {
                     <CardDescription>
                       Servicio: {selectedServiceForView.nombre_servicio} - Mes: {scheduleMonths.find(m=>m.value === selectedMonthView)?.label} {selectedYearView}
                     </CardDescription>
-                     {selectedScheduleToDisplay.status === 'published' && (
-                        <CardFooter className="border-t pt-4 mt-2 -mx-6 px-6 pb-0">
-                          <Button
-                            variant="outline"
-                            onClick={handleArchiveClick}
-                            disabled={archiveScheduleMutation.isPending}
-                            className="w-full md:w-auto"
-                          >
-                            {archiveScheduleMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ArchiveIcon className="mr-2 h-4 w-4" />}
-                            Archivar Horario
-                          </Button>
-                        </CardFooter>
-                      )}
+                     <CardFooter className="border-t pt-4 mt-2 -mx-6 px-6 pb-0 flex flex-col md:flex-row justify-end gap-2">
+                       {selectedScheduleToDisplay.status === 'draft' && (
+                         <Button
+                           variant="outline"
+                           onClick={() => {
+                             setScheduleInEdit(selectedScheduleToDisplay);
+                             setActiveTab("generate-shifts"); // Cambiar a la pestaña de edición
+                           }}
+                           className="w-full md:w-auto"
+                         >
+                           <Pencil className="mr-2 h-4 w-4" /> Editar Borrador
+                         </Button>
+                       )}
+                       {selectedScheduleToDisplay.status === 'published' && (
+                         <Button
+                           variant="outline"
+                           onClick={handleArchiveClick}
+                           disabled={archiveScheduleMutation.isPending}
+                           className="w-full md:w-auto"
+                         >
+                           {archiveScheduleMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ArchiveIcon className="mr-2 h-4 w-4" />}
+                           Archivar Horario
+                         </Button>
+                       )}
+                     </CardFooter>
                   </CardHeader>
                   <CardContent>
                     {selectedScheduleToDisplay.shifts && selectedScheduleToDisplay.shifts.length > 0 ? (
@@ -346,10 +417,101 @@ export default function SchedulePage() {
         </TabsContent>
 
         <TabsContent value="generate-shifts" className="mt-6">
-          <ShiftGeneratorForm
-            allEmployees={employees}
-            allServices={services}
-          />
+          {scheduleInEdit ? (
+            <InteractiveScheduleGrid
+              initialShifts={scheduleInEdit.shifts}
+              allEmployees={employees}
+              targetService={selectedServiceForView ?? null}
+              month={selectedMonthView}
+              year={selectedYearView}
+              holidays={holidays}
+              onShiftsChange={(newShifts: AIShift[]) => setScheduleInEdit(prev => prev ? { ...prev, shifts: newShifts } : null)}
+              onBackToConfig={() => setScheduleInEdit(null)}
+              onSave={handleSaveSchedule}
+              isSaving={saveScheduleMutation.isPending}
+            />
+          ) : (
+            <Card className="mb-6 shadow-md hover:shadow-lg transition-shadow duration-300">
+              <CardHeader>
+                <CardTitle className="flex items-center text-xl font-headline">
+                  <CalendarSearch className="mr-3 h-6 w-6 text-primary"/>
+                  Generar/Editar Horario
+                </CardTitle>
+                <CardDescription>
+                  Seleccione el servicio, mes y año para generar un nuevo horario o editar un borrador existente.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Select value={selectedServiceIdView} onValueChange={setSelectedServiceIdView}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar Servicio" /></SelectTrigger>
+                    <SelectContent>
+                      {services.map(service => (
+                        <SelectItem key={service.id_servicio} value={service.id_servicio.toString()}>{service.nombre_servicio}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedMonthView} onValueChange={setSelectedMonthView}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar Mes" /></SelectTrigger>
+                    <SelectContent>
+                      {scheduleMonths.map(m => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedYearView} onValueChange={setSelectedYearView}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar Año" /></SelectTrigger>
+                    <SelectContent>
+                      {scheduleYears.map(y => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={handleLoadRefreshSchedule}
+                  disabled={!selectedServiceIdView || !selectedMonthView || !selectedYearView || isLoadingSchedulesList || archiveScheduleMutation.isPending}
+                  className="w-full md:w-auto mt-2"
+                >
+                  {isLoadingSchedulesList ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                  Cargar/Refrescar Horarios
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {!isLoadingSchedulesList && !errorSchedulesList && selectedServiceIdView && selectedMonthView && selectedYearView && !scheduleInEdit && (
+            <>
+              {availableSchedules.length > 0 ? (
+                <Card className="mt-4">
+                  <CardHeader><CardTitle>Horarios Disponibles para Editar</CardTitle></CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {availableSchedules.map(schedule => (
+                        <li key={schedule.id} className={`p-2 border rounded-md hover:bg-accent cursor-pointer flex justify-between items-center ${selectedScheduleToDisplay?.id === schedule.id ? 'bg-accent' : ''}`} onClick={() => setScheduleInEdit(schedule)}>
+                          <div>
+                            <span className="font-semibold">{schedule.horario_nombre || `Horario ID: ${schedule.id}`}</span>
+                            <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${schedule.status === 'published' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>{schedule.status}</span>
+                            <p className="text-sm text-muted-foreground">Actualizado: {format(new Date(schedule.updatedAt), 'dd/MM/yyyy HH:mm')}</p>
+                          </div>
+                          {selectedScheduleToDisplay?.id === schedule.id && <span className="text-primary font-bold"> (Viendo)</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Alert className="mt-4">
+                  <Info className="h-5 w-5 mr-2"/>
+                  <AlertTitle>No se encontraron borradores</AlertTitle>
+                  <AlertDescription>
+                    No hay borradores para {selectedServiceForView?.nombre_servicio || 'el servicio seleccionado'} en {scheduleMonths.find(m => m.value === selectedMonthView)?.label || ''} {selectedYearView}.
+                    Puede generar uno nuevo a continuación.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <ShiftGeneratorForm
+                allEmployees={employees}
+                allServices={services}
+              />
+            </>
+          )}
         </TabsContent>
       </Tabs>
       <AlertDialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
@@ -364,7 +526,7 @@ export default function SchedulePage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={archiveScheduleMutation.isPending}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmArchive} disabled={archiveScheduleMutation.isPending} className="bg-orange-600 hover:bg-orange-700">
-              {archiveScheduleMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArchiveIcon className="mr-2 h-4 w-4" /> }
+              {archiveScheduleMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArchiveIcon className="mr-2 h-4 w-4" />}
               Sí, Archivar Horario
             </AlertDialogAction>
           </AlertDialogFooter>

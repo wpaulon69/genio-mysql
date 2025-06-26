@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -10,13 +9,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertTriangle } from 'lucide-react';
 import type { Service, Employee, MonthlySchedule, EmployeeReportMetrics, EmployeeComparisonReportOutput, Holiday, ScheduleQualityReportOutput } from '@/lib/types';
 import { useQuery } from '@tanstack/react-query';
-import { getServices } from '@/lib/firebase/services';
-import { getEmployees } from '@/lib/firebase/employees';
-import { getPublishedMonthlySchedule, getSchedulesInDateRange, generateScheduleKey } from '@/lib/firebase/monthlySchedules'; // Updated import
+import { getServices } from '@/lib/mysql/services';
+import { getEmployees } from '@/lib/mysql/employees';
+import { getPublishedMonthlySchedule, getSchedulesInDateRange, generateScheduleKey } from '@/lib/mysql/monthlySchedules'; // Updated import
 import { getGridShiftTypeFromAIShift } from '@/components/schedule/InteractiveScheduleGrid';
 import { parseISO, getDay, format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { getHolidays } from '@/lib/firebase/holidays';
+import { getHolidays } from '@/lib/mysql/holidays';
 
 
 const reportMonths = Array.from({ length: 12 }, (_, i) => ({
@@ -85,22 +84,23 @@ export default function ReportsPage() {
 
         schedulesInRange.forEach(schedule => {
           schedule.shifts.forEach(shift => {
-            const employee = employees.find(e => e.name === shift.employeeName);
+            const employee = employees.find(e => e.nombre === shift.employeeName); // Revertido a e.nombre
             if (!employee) {
               console.warn(`Empleado "${shift.employeeName}" del turno no encontrado en la lista de empleados.`);
               return;
             }
 
-            if (!metricsByEmployee[employee.id]) {
-              metricsByEmployee[employee.id] = {
-                employeeId: employee.id, employeeName: employee.name,
+            if (!metricsByEmployee[employee.id_empleado]) { // Revertido a employee.id_empleado
+              metricsByEmployee[employee.id_empleado] = { // Revertido a employee.id_empleado
+                employeeId: employee.id_empleado.toString(), // Convertir a string para EmployeeReportMetrics
+                employeeName: employee.nombre, // Revertido a employee.nombre
                 totalAssignedDays: 0, workDays: 0, weekendWorkDays: 0, holidayWorkDays: 0,
                 weekendRestDays: 0, restDays: 0, ptoDays: 0, sickLeaveDays: 0, compOffDays: 0, holidaysOff: 0,
                 shiftsM: 0, shiftsT: 0, shiftsN: 0,
                 workToRestRatio: '',
               };
             }
-            const metrics = metricsByEmployee[employee.id];
+            const metrics = metricsByEmployee[employee.id_empleado]; // Revertido a employee.id_empleado
             metrics.totalAssignedDays++;
 
             const shiftDate = parseISO(shift.date);
@@ -147,8 +147,8 @@ export default function ReportsPage() {
         
         let serviceNameForLabel = "Todos los Servicios";
         if (targetServiceId) {
-            const foundService = services.find(s => s.id === targetServiceId);
-            if (foundService) serviceNameForLabel = foundService.name;
+            const foundService = services.find(s => s.id_servicio.toString() === targetServiceId); // Revertido a id_servicio
+            if (foundService) serviceNameForLabel = foundService.nombre_servicio; // Revertido a nombre_servicio
         }
 
         setEmployeeComparisonOutput({
@@ -160,7 +160,7 @@ export default function ReportsPage() {
 
       } catch (e) {
         console.error("Error generando el informe comparativo:", e);
-        setProcessingError(e instanceof Error ? e.message : "Ocurrió un error desconocido durante la generación del informe comparativo.");
+        setProcessingError(e instanceof Error ? e.message : "Ocurrió un error desconocido durante la generación del resumen.");
       }
     } else if (filters.reportType === 'scheduleQuality') {
       try {
@@ -173,12 +173,12 @@ export default function ReportsPage() {
         // getPublishedMonthlySchedule will fetch the 'published' schedule
         const publishedSchedule = await getPublishedMonthlySchedule(yearForScheduleQuality, monthForScheduleQuality, serviceIdForScheduleQuality);
         if (publishedSchedule) {
-          const service = services.find(s => s.id === serviceIdForScheduleQuality);
+          const service = services.find(s => s.id_servicio.toString() === serviceIdForScheduleQuality); // Revertido a id_servicio
           const monthLabel = reportMonths.find(m => m.value === monthForScheduleQuality)?.label || monthForScheduleQuality;
           setScheduleQualityOutput({
             reportType: 'scheduleQuality',
             scheduleKey: publishedSchedule.scheduleKey,
-            serviceName: service?.name || 'Servicio Desconocido',
+            serviceName: service?.nombre_servicio || 'Servicio Desconocido', // Revertido a nombre_servicio
             dateLabel: `${monthLabel} ${yearForScheduleQuality}`,
             score: publishedSchedule.score,
             violations: publishedSchedule.violations,

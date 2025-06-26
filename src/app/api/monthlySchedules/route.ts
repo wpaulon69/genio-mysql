@@ -1,7 +1,7 @@
 import {
   getMonthlySchedules,
   createMonthlySchedule,
-  // updateMonthlySchedule,
+  updateMonthlySchedule,
   // deleteMonthlySchedule,
 } from '@/lib/mysql/monthlySchedules';
 import { NextResponse } from 'next/server';
@@ -33,5 +33,13 @@ export async function POST(request: Request) {
   }
 }
 
-// Las funciones PUT, DELETE se omiten por simplicidad,
-// ya que la lógica de creación/actualización está en el generador de horarios.
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    await updateMonthlySchedule(body);
+    return NextResponse.json({ message: 'Schedule updated successfully' });
+  } catch (error) {
+    console.error('Error in PUT /api/monthlySchedules:', error);
+    return NextResponse.json({ message: 'Error updating schedule' }, { status: 500 });
+  }
+}
