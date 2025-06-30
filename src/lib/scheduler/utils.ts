@@ -1,19 +1,42 @@
 import { format, parseISO, addDays, getDay } from 'date-fns';
 import type { AIShift, AsignacionEmpleado } from '@/lib/types';
 
-export function getShiftTypeForEval(shift: AIShift): AIShift['notes'] | 'M' | 'T' | 'N' | 'D' | 'LAO' | 'LM' | 'C' | 'F' | 'V' {
-    if (shift.notes) {
-        const note = shift.notes.toUpperCase();
-        if (['LAO', 'LM', 'C', 'F', 'V'].includes(note)) {
-            return note as 'LAO' | 'LM' | 'C' | 'F' | 'V';
-        }
-    }
-    if (shift.startTime === '00:00' && shift.endTime === '00:00') return 'D';
-    if (shift.startTime === '07:00') return 'M';
-    if (shift.startTime === '14:00') return 'T';
-    if (shift.startTime === '21:00') return 'N';
+export function getShiftType(shift: AIShift | null | undefined): 'M' | 'T' | 'N' | 'D' | 'LAO' | 'LM' | 'C' | 'F' | 'V' | '' {
+  if (!shift) return '';
+
+  const note = shift.notes?.toUpperCase();
+
+  // Tipos explícitos que no son de trabajo a partir de las notas (máxima prioridad)
+  if (note === 'C' || note === 'C (FRANCO COMP.)' || note?.includes('FRANCO COMP')) return 'C';
+  if (note?.startsWith('F') || note?.includes('FERIADO')) return 'F';
+  if (note === 'D' || note === 'D (DESCANSO)' || note?.includes('DESCANSO') || note === 'D (FIJO SEMANAL)' || note === 'D (FDS OBJETIVO)') return 'D';
+  if (note?.startsWith('LAO')) return 'LAO';
+  if (note?.startsWith('LM')) return 'LM';
+  if (note?.startsWith('V')) return 'V';
+
+  // Turnos de trabajo basados en startTime (si las notas no especificaron un tipo de no trabajo)
+  if (shift.startTime && shift.startTime.trim() !== '') {
+    if (shift.startTime.startsWith('07:') || shift.startTime.startsWith('08:')) return 'M';
+    if (shift.startTime.startsWith('14:') || shift.startTime.startsWith('15:')) return 'T';
+    if (shift.startTime.startsWith('22:') || shift.startTime.startsWith('23:')) return 'N';
+  }
+  
+  // Turnos de trabajo basados en las notas (si startTime no coincidió o si startTime estaba vacío pero las notas indican M, T, N)
+  if (note?.includes('MAÑANA') || note?.includes('(M)')) return 'M';
+  if (note?.includes('TARDE') || note?.includes('(T)')) return 'T';
+  if (note?.includes('NOCHE') || note?.includes('(N)')) return 'N';
+  
+  // Fallback: Si startTime está vacío Y las notas también están vacías o no son indicativas de ningún tipo conocido,
+  // entonces considéralo un día de descanso ('D').
+  if ((!shift.startTime || shift.startTime.trim() === '') && (!note || note.trim() === '')) {
     return 'D';
+  }
+  
+  return ''; // Fallback para cualquier otro caso no manejado
 }
+
+// La función anterior getShiftTypeForEval se reemplaza por getShiftType
+export { getShiftType as getShiftTypeForEval };
 
 export function isRestDay(shiftType: string | undefined): boolean {
     if (!shiftType) return true;

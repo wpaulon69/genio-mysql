@@ -11,54 +11,16 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format, getDaysInMonth, getDate, parseISO, isValid, getDay as getDayOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, RefreshCw, Save } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { SHIFT_OPTIONS, type GridShiftType, type ShiftOption } from '@/lib/constants/schedule-constants';
 import { cn } from '@/lib/utils';
-import { evaluateScheduleMetrics } from '@/lib/scheduler/evaluation';
+import { getShiftType } from '@/lib/scheduler/utils';
+// import { evaluateScheduleMetrics } from '@/lib/scheduler/evaluation'; // Se llamará a través de una API
 import ScheduleEvaluationDisplay from './schedule-evaluation-display';
-import { defaultScheduleRulesConfig } from '@/lib/scheduler/config';
+// import { defaultScheduleRulesConfig } from '@/lib/scheduler/config'; // Se usa en el backend
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import ClientOnly from '../common/client-only';
-
-/**
- * Convierte un objeto `AIShift` (potencialmente de la IA o guardado) al tipo de turno (`GridShiftType`)
- * que se utiliza en la grilla interactiva para la selección y visualización.
- * Se basa en las notas del turno (`notes`) y, secundariamente, en `startTime`.
- *
- * @param {AIShift | null | undefined} aiShift - El turno de entrada.
- * @returns {GridShiftType} El tipo de turno para la grilla (ej. 'M', 'T', 'N', 'D', 'LAO', etc.).
- */
-export function getGridShiftTypeFromAIShift(aiShift: AIShift | null | undefined): GridShiftType {
-  if (!aiShift) return '';
-
-  const note = aiShift.notes?.toUpperCase();
-
-  // Explicit non-work types from notes (highest priority)
-  if (note === 'C' || note === 'C (FRANCO COMP.)' || note?.includes('FRANCO COMP')) return 'C';
-  if (note?.startsWith('F') || note?.includes('FERIADO')) return 'F';
-  if (note === 'D' || note === 'D (DESCANSO)' || note?.includes('DESCANSO') || note === 'D (FIJO SEMANAL)' || note === 'D (FDS OBJETIVO)') return 'D';
-  if (note?.startsWith('LAO')) return 'LAO';
-  if (note?.startsWith('LM')) return 'LM';
-
-  // Work shifts based on startTime (if notes didn't specify a non-work type)
-  if (aiShift.startTime && aiShift.startTime.trim() !== '') {
-    if (aiShift.startTime.startsWith('07:') || aiShift.startTime.startsWith('08:')) return 'M';
-    if (aiShift.startTime.startsWith('14:') || aiShift.startTime.startsWith('15:')) return 'T';
-    if (aiShift.startTime.startsWith('22:') || aiShift.startTime.startsWith('23:')) return 'N';
-  }
-  
-  // Work shifts based on notes (if startTime didn't match or if startTime was empty but notes indicate M,T,N)
-  if (note?.includes('MAÑANA') || note?.includes('(M)')) return 'M';
-  if (note?.includes('TARDE') || note?.includes('(T)')) return 'T';
-  if (note?.includes('NOCHE') || note?.includes('(N)')) return 'N';
-  
-  // Fallback: If startTime is empty AND notes are also empty or non-indicative of any known type,
-  // then consider it a rest day ('D'). This was refined.
-  if ((!aiShift.startTime || aiShift.startTime.trim() === '') && (!note || note.trim() === '')) {
-    return 'D';
-  }
-  
-  return ''; 
-}
 
 /**
  * Obtiene la clase CSS de Tailwind para el color de fondo de una celda de turno.
@@ -101,12 +63,14 @@ const getShiftCellColorClass = (shiftType: GridShiftType): string => {
  */
 export default function InteractiveScheduleGrid({
   initialShifts,
+  initialScheduleName,
   allEmployees,
   targetService,
   month,
   year,
   holidays = [],
   onShiftsChange,
+  onScheduleNameChange,
   onBackToConfig,
   isReadOnly = false,
   onSave,
@@ -115,16 +79,64 @@ export default function InteractiveScheduleGrid({
   console.log('--- DEBUG GRID: initialShifts ---', JSON.stringify(initialShifts, null, 2));
   console.log('--- DEBUG GRID: month, year ---', month, year);
   const [editableShifts, setEditableShifts] = useState<AIShift[]>([...initialShifts]);
+  const [scheduleName, setScheduleName] = useState(initialScheduleName || '');
   const [evaluationResult, setEvaluationResult] = useState<any>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleReevaluate = async () => {
     if (!targetService) return;
     setIsEvaluating(true);
-    const result = await evaluateScheduleMetrics(editableShifts, targetService, month, year, allEmployees, holidays, null, defaultScheduleRulesConfig);
-    setEvaluationResult(result);
-    setIsEvaluating(false);
+    try {
+      // Obtener el mes y año anterior
+      const currentMonth = parseInt(month, 10);
+      const currentYear = parseInt(year, 10);
+      const prevMonthDate = new Date(currentYear, currentMonth - 2);
+      const prevMonth = prevMonthDate.getMonth() + 1;
+      const prevYear = prevMonthDate.getFullYear();
+
+      // Fetch los turnos del mes anterior
+      const prevMonthShiftsResponse = await fetch(`/api/monthlySchedules?year=${prevYear}&month=${prevMonth}&serviceId=${targetService.id_servicio}&status=published`);
+      let previousMonthShifts = null;
+      if (prevMonthShiftsResponse.ok) {
+        const prevSchedules = await prevMonthShiftsResponse.json();
+        if (prevSchedules.length > 0) {
+          previousMonthShifts = prevSchedules[0].shifts;
+        }
+      }
+
+      const response = await fetch('/api/evaluate-schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shifts: editableShifts,
+          service: targetService,
+          month,
+          year,
+          employees: allEmployees,
+          holidays,
+          previousMonthShifts, // Enviar los turnos del mes anterior
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al evaluar el horario.');
+      }
+
+      const result = await response.json();
+      setEvaluationResult(result);
+    } catch (error) {
+      console.error("Error en handleReevaluate:", error);
+      // Opcional: mostrar un toast de error al usuario
+    } finally {
+      setIsEvaluating(false);
+    }
   };
 
   const handleSave = (status: 'published' | 'draft') => {
@@ -141,7 +153,8 @@ export default function InteractiveScheduleGrid({
    */
   useEffect(() => {
     setEditableShifts([...initialShifts]);
-  }, [initialShifts]);
+    setScheduleName(initialScheduleName || '');
+  }, [initialShifts, initialScheduleName]);
 
 
   /** Memoiza el objeto Date para el primer día del mes/año seleccionado. */
@@ -241,7 +254,7 @@ export default function InteractiveScheduleGrid({
         const shift = gridData[name]?.[day];
         if (shift) {
           stats[name].totalAssignments++;
-          const shiftType = getGridShiftTypeFromAIShift(shift);
+          const shiftType = getShiftType(shift);
           if (shiftType === 'D') {
             stats[name].totalD++;
           } else if (['M', 'T', 'N'].includes(shiftType)) {
@@ -315,7 +328,7 @@ export default function InteractiveScheduleGrid({
       dayHeaders.forEach(header => {
         const shift = gridData[employeeName]?.[header.dayNumber];
         if (shift) {
-          const shiftType = getGridShiftTypeFromAIShift(shift);
+          const shiftType = getShiftType(shift);
           if (shiftType === 'M') totals[header.dayNumber].M++;
           else if (shiftType === 'T') totals[header.dayNumber].T++;
           else if (shiftType === 'N') totals[header.dayNumber].N++;
@@ -360,11 +373,25 @@ export default function InteractiveScheduleGrid({
          </Card>
       ) : (
         <Card className="mt-6 w-full">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="font-headline">
-                Horario: {targetService?.nombre_servicio || "Turnos"} - {monthName} {currentYearStr}
-              </CardTitle>
+          <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex-grow">
+              <Label htmlFor="schedule-name-input" className="text-sm font-medium text-muted-foreground">
+                Nombre del Horario
+              </Label>
+              <Input
+                id="schedule-name-input"
+                type="text"
+                value={scheduleName}
+                onChange={(e) => {
+                  setScheduleName(e.target.value);
+                  if (onScheduleNameChange) {
+                    onScheduleNameChange(e.target.value);
+                  }
+                }}
+                placeholder={`Ej: Horario ${targetService?.nombre_servicio} - ${monthName} ${currentYearStr}`}
+                className="text-lg font-headline mt-1"
+                disabled={isReadOnly}
+              />
               {!isReadOnly && (
                 <p className="text-sm text-muted-foreground">
                   Puede editar los turnos manualmente. Los cambios se reflejan para guardar. Use '-' para vaciar una celda.
@@ -431,12 +458,12 @@ export default function InteractiveScheduleGrid({
                         </TableCell>
                         {dayHeaders.map(header => {
                           const shift = gridData[employeeName]?.[header.dayNumber];
-                          const currentShiftType = getGridShiftTypeFromAIShift(shift);
+                          const currentShiftType = getShiftType(shift);
                           const selectedOption = SHIFT_OPTIONS.find(opt => opt.value === currentShiftType);
                           return (
                             <TableCell key={`${employeeName}-${header.dayNumber}`} className="p-1 w-[70px] min-w-[70px]">
                               <Select
-                                value={currentShiftType === '' ? "_EMPTY_" : currentShiftType}
+                                value={currentShiftType === '' ? "_EMPTY_" : currentShiftType as GridShiftType}
                                 onValueChange={(value) => handleShiftChange(employeeName, header.dayNumber, value as GridShiftType)}
                                 disabled={isReadOnly}
                               >
@@ -468,64 +495,68 @@ export default function InteractiveScheduleGrid({
                     ))}
                   </TableBody>
                   <TableFooter>
-                    <TableRow key="footer-total-m" className="bg-muted font-semibold">
-                      <TableCell
-                        className="sticky left-0 bg-muted z-10 truncate"
-                        style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                      >TPM</TableCell>
-                      <TableCell
-                        className="sticky bg-muted z-10 text-center"
-                        style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
-                      ></TableCell>
-                      {dayHeaders.map(header => {
-                        const total = dailyTotals[header.dayNumber]?.M;
-                        return <TableCell key={`footer-m-${header.dayNumber}`} className="text-center">{total || 0}</TableCell>;
-                      })}
-                    </TableRow>
-                    <TableRow key="footer-total-t" className="bg-muted font-semibold">
-                      <TableCell
-                        className="sticky left-0 bg-muted z-10 truncate"
-                        style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                      >TPT</TableCell>
-                      <TableCell
-                        className="sticky bg-muted z-10 text-center"
-                        style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
-                      ></TableCell>
-                      {dayHeaders.map(header => {
-                        const total = dailyTotals[header.dayNumber]?.T;
-                        return <TableCell key={`footer-t-${header.dayNumber}`} className="text-center">{total || 0}</TableCell>;
-                      })}
-                    </TableRow>
-                    {targetService?.habilitar_turno_noche && (
-                      <TableRow key="footer-total-n" className="bg-muted font-semibold">
-                        <TableCell
-                          className="sticky left-0 bg-muted z-10 truncate"
-                          style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                        >Total Noche (N)</TableCell>
-                        <TableCell
-                          className="sticky bg-muted z-10 text-center"
-                          style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
-                        ></TableCell>
-                        {dayHeaders.map(header => {
-                          const total = dailyTotals[header.dayNumber]?.N;
-                          return <TableCell key={`footer-n-${header.dayNumber}`} className="text-center">{total || 0}</TableCell>;
-                        })}
-                      </TableRow>
+                    {isMounted && (
+                      <>
+                        <TableRow key="footer-total-m" className="bg-muted font-semibold">
+                          <TableCell
+                            className="sticky left-0 bg-muted z-10 truncate"
+                            style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
+                          >TPM</TableCell>
+                          <TableCell
+                            className="sticky bg-muted z-10 text-center"
+                            style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
+                          ></TableCell>
+                          {dayHeaders.map(header => {
+                            const total = dailyTotals[header.dayNumber]?.M;
+                            return <TableCell key={`footer-m-${header.dayNumber}`} className="text-center"><span>{total || 0}</span></TableCell>;
+                          })}
+                        </TableRow>
+                        <TableRow key="footer-total-t" className="bg-muted font-semibold">
+                          <TableCell
+                            className="sticky left-0 bg-muted z-10 truncate"
+                            style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
+                          >TPT</TableCell>
+                          <TableCell
+                            className="sticky bg-muted z-10 text-center"
+                            style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
+                          ></TableCell>
+                          {dayHeaders.map(header => {
+                            const total = dailyTotals[header.dayNumber]?.T;
+                            return <TableCell key={`footer-t-${header.dayNumber}`} className="text-center"><span>{total || 0}</span></TableCell>;
+                          })}
+                        </TableRow>
+                        {targetService?.habilitar_turno_noche && (
+                          <TableRow key="footer-total-n" className="bg-muted font-semibold">
+                            <TableCell
+                              className="sticky left-0 bg-muted z-10 truncate"
+                              style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
+                            >Total Noche (N)</TableCell>
+                            <TableCell
+                              className="sticky bg-muted z-10 text-center"
+                              style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
+                            ></TableCell>
+                            {dayHeaders.map(header => {
+                              const total = dailyTotals[header.dayNumber]?.N;
+                              return <TableCell key={`footer-n-${header.dayNumber}`} className="text-center"><span>{total || 0}</span></TableCell>;
+                            })}
+                          </TableRow>
+                        )}
+                        <TableRow key="footer-total-staff" className="bg-muted font-bold text-base">
+                          <TableCell
+                            className="sticky left-0 bg-muted z-10 truncate"
+                            style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
+                          >TOTAL PERSONAL</TableCell>
+                          <TableCell
+                            className="sticky bg-muted z-10 text-center"
+                            style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
+                          ></TableCell>
+                          {dayHeaders.map(header => {
+                            const total = dailyTotals[header.dayNumber]?.totalStaff;
+                            return <TableCell key={`footer-staff-${header.dayNumber}`} className="text-center"><span>{total || 0}</span></TableCell>;
+                          })}
+                        </TableRow>
+                      </>
                     )}
-                    <TableRow key="footer-total-staff" className="bg-muted font-bold text-base">
-                      <TableCell
-                        className="sticky left-0 bg-muted z-10 truncate"
-                        style={{ width: employeeColumnWidth, minWidth: employeeColumnWidth, maxWidth: employeeColumnWidth }}
-                      >TOTAL PERSONAL</TableCell>
-                      <TableCell
-                        className="sticky bg-muted z-10 text-center"
-                        style={{ left: employeeColumnWidth, width: totalDColumnWidth, minWidth: totalDColumnWidth, maxWidth: totalDColumnWidth }}
-                      ></TableCell>
-                      {dayHeaders.map(header => {
-                        const total = dailyTotals[header.dayNumber]?.totalStaff;
-                        return <TableCell key={`footer-staff-${header.dayNumber}`} className="text-center">{total || 0}</TableCell>;
-                      })}
-                    </TableRow>
                   </TableFooter>
                 </Table>
                 <ScrollBar orientation="horizontal" />

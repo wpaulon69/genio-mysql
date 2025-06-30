@@ -122,12 +122,14 @@ export interface MonthlySchedule {
 
 export interface InteractiveScheduleGridProps {
   initialShifts: AIShift[];
+  initialScheduleName?: string;
   allEmployees: Employee[];
   targetService: Service | null;
   month: string;
   year: string;
   holidays?: Holiday[];
   onShiftsChange?: (newShifts: AIShift[]) => void;
+  onScheduleNameChange?: (newName: string) => void;
   onBackToConfig?: () => void;
   isReadOnly?: boolean;
   onSave?: (shifts: AIShift[], status: 'published' | 'draft', evaluationResult: any | null) => void;

@@ -70,12 +70,12 @@ export default function ScheduleEvaluationDisplay({ score, violations, scoreBrea
               <div className="flex items-center">
                   <ShieldCheck className="mr-2 h-5 w-5 text-blue-600"/>
                   <span>Cumplimiento Reglas Servicio:</span>
-                  <Badge variant={breakdownToDisplay.serviceRules >= 80 ? "default" : breakdownToDisplay.serviceRules >= 60 ? "secondary" : "destructive"} className="ml-auto md:ml-2">{breakdownToDisplay.serviceRules.toFixed(0)} / 100</Badge>
+                  <Badge variant={(breakdownToDisplay.serviceRules ?? 0) >= 80 ? "default" : (breakdownToDisplay.serviceRules ?? 0) >= 60 ? "secondary" : "destructive"} className="ml-auto md:ml-2">{(breakdownToDisplay.serviceRules ?? 0).toFixed(0)} / 100</Badge>
               </div>
               <div className="flex items-center">
                   <HeartHandshake className="mr-2 h-5 w-5 text-green-600"/>
                   <span>Bienestar del Personal:</span>
-                  <Badge variant={breakdownToDisplay.employeeWellbeing >= 80 ? "default" : breakdownToDisplay.employeeWellbeing >= 60 ? "secondary" : "destructive"} className="ml-auto md:ml-2">{breakdownToDisplay.employeeWellbeing.toFixed(0)} / 100</Badge>
+                  <Badge variant={(breakdownToDisplay.employeeWellbeing ?? 0) >= 80 ? "default" : (breakdownToDisplay.employeeWellbeing ?? 0) >= 60 ? "secondary" : "destructive"} className="ml-auto md:ml-2">{(breakdownToDisplay.employeeWellbeing ?? 0).toFixed(0)} / 100</Badge>
               </div>
           </div>
         )}

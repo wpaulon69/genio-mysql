@@ -11,8 +11,7 @@ import type { Service, Employee, MonthlySchedule, EmployeeReportMetrics, Employe
 import { useQuery } from '@tanstack/react-query';
 import { getServices } from '@/lib/mysql/services';
 import { getEmployees } from '@/lib/mysql/employees';
-import { getPublishedMonthlySchedule, getSchedulesInDateRange, generateScheduleKey } from '@/lib/mysql/monthlySchedules'; // Updated import
-import { getGridShiftTypeFromAIShift } from '@/components/schedule/InteractiveScheduleGrid';
+import { getShiftType } from '@/lib/scheduler/utils';
 import { parseISO, getDay, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { getHolidays } from '@/lib/mysql/holidays';
@@ -107,7 +106,7 @@ export default function ReportsPage() {
             const dayOfWeek = getDay(shiftDate);
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             const isCurrentHoliday = holidays.some(h => h.date === shift.date);
-            const shiftType = getGridShiftTypeFromAIShift(shift);
+            const shiftType = getShiftType(shift);
 
             if (shiftType === 'M') metrics.shiftsM++;
             else if (shiftType === 'T') metrics.shiftsT++;

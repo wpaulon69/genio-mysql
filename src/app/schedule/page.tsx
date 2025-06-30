@@ -16,9 +16,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { es } from 'date-fns/locale';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { getGridShiftTypeFromAIShift } from '@/components/schedule/InteractiveScheduleGrid';
-import InteractiveScheduleGrid from '@/components/schedule/InteractiveScheduleGrid'; // Importar InteractiveScheduleGrid
+import { getShiftType } from '@/lib/scheduler/utils';
 import type { AIShift } from '@/ai/flows/suggest-shift-schedule'; // Importar AIShift para tipado
+import dynamic from 'next/dynamic';
+
+const InteractiveScheduleGrid = dynamic(() => import('@/components/schedule/InteractiveScheduleGrid'), {
+  ssr: false,
+  loading: () => <div className="flex justify-center items-center py-10"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="ml-3 text-muted-foreground">Cargando grilla...</p></div>,
+});
 
 const currentYear = new Date().getFullYear();
 const scheduleYears = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
@@ -93,11 +98,9 @@ export default function SchedulePage() {
   useEffect(() => {
     const schedules = fetchedSchedulesList ?? [];
     setAvailableSchedules(schedules);
-    if (schedules.length > 0 && !selectedScheduleToDisplay) {
-      setSelectedScheduleToDisplay(schedules[0]);
-    } else if (schedules.length === 0) {
-      setSelectedScheduleToDisplay(null);
-    }
+    // Ya no se selecciona un horario automáticamente al cargar la lista.
+    // El usuario debe hacer clic para seleccionar uno.
+    // setSelectedScheduleToDisplay(null); // Opcional: limpiar la selección al recargar la lista
   }, [fetchedSchedulesList]);
 
   const selectedServiceForView = useMemo(() => {
@@ -121,8 +124,17 @@ export default function SchedulePage() {
 
   const archiveScheduleMutation = useMutation({
     mutationFn: async (scheduleId: string) => {
-      console.log(`Archiving schedule ${scheduleId}`);
-      return Promise.resolve();
+      const response = await fetch('/api/monthlySchedules', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: scheduleId, status: 'archived' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al archivar el horario.');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({ title: "Horario Archivado", description: "El horario publicado ha sido archivado exitosamente." });
@@ -304,6 +316,7 @@ export default function SchedulePage() {
                           <div>
                             <span className="font-semibold">{schedule.horario_nombre || `Horario ID: ${schedule.id}`}</span>
                             <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${schedule.status === 'published' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>{schedule.status}</span>
+                            <span className="ml-2 text-xs font-medium">Puntaje: <span className="font-bold">{schedule.score ?? 'N/A'}</span></span>
                             <p className="text-sm text-muted-foreground">Actualizado: {format(new Date(schedule.updatedAt), 'dd/MM/yyyy HH:mm')}</p>
                           </div>
                           {selectedScheduleToDisplay?.id === schedule.id && <span className="text-primary font-bold"> (Viendo)</span>}
@@ -382,7 +395,7 @@ export default function SchedulePage() {
                                       {Array.from({ length: getDaysInMonth(new Date(parseInt(selectedYearView), parseInt(selectedMonthView) - 1)) }, (_, i) => i + 1).map(day => {
                                         const shiftDate = format(new Date(parseInt(selectedYearView), parseInt(selectedMonthView) - 1, day), 'yyyy-MM-dd');
                                         const shift = selectedScheduleToDisplay.shifts.find(s => s.employeeName === employee.nombre && s.date.substring(0, 10) === shiftDate);
-                                        const shiftType = shift ? getGridShiftTypeFromAIShift(shift) : '-';
+                                        const shiftType = shift ? getShiftType(shift) : '-';
                                         return (
                                           <td key={`${employee.id_empleado}-${day}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{shiftType}</td>
                                         );
@@ -420,12 +433,14 @@ export default function SchedulePage() {
           {scheduleInEdit ? (
             <InteractiveScheduleGrid
               initialShifts={scheduleInEdit.shifts}
+              initialScheduleName={scheduleInEdit.horario_nombre || ''}
               allEmployees={employees}
               targetService={selectedServiceForView ?? null}
               month={selectedMonthView}
               year={selectedYearView}
               holidays={holidays}
               onShiftsChange={(newShifts: AIShift[]) => setScheduleInEdit(prev => prev ? { ...prev, shifts: newShifts } : null)}
+              onScheduleNameChange={(newName: string) => setScheduleInEdit(prev => prev ? { ...prev, horario_nombre: newName } : null)}
               onBackToConfig={() => setScheduleInEdit(null)}
               onSave={handleSaveSchedule}
               isSaving={saveScheduleMutation.isPending}

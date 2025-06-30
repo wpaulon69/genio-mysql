@@ -52,13 +52,15 @@ export async function getMonthlySchedules(
         }
 
         const [scheduleRows] = await connection.execute(query, params);
+        console.log('[DEBUG] scheduleRows recuperados:', JSON.stringify(scheduleRows, null, 2));
         const schedules: MonthlySchedule[] = [];
 
         for (const scheduleRow of scheduleRows as any[]) {
             const scheduleId = scheduleRow.id;
 
+            console.log(`[DEBUG] Ejecutando consulta de shifts para horario_id: ${scheduleId}`);
             const [shifts] = await connection.execute(
-                'SELECT hd.*, e.nombre as employeeName, s.nombre_servicio as serviceName FROM `horario_detalles` hd JOIN `empleados` e ON hd.employeeId = e.id_empleado JOIN `servicios` s ON hd.serviceId = s.id_servicio WHERE hd.`horario_id` = ?',
+                'SELECT hd.*, e.nombre as employeeName, s.nombre_servicio as serviceName FROM `horario_detalles` hd LEFT JOIN `empleados` e ON hd.employeeId = e.id_empleado LEFT JOIN `servicios` s ON hd.serviceId = s.id_servicio WHERE hd.`horario_id` = ?',
                 [scheduleId]
             );
             const [violations] = await connection.execute(
