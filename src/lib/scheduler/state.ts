@@ -49,8 +49,8 @@ export function initializeEmployeeStatesFromHistory(
     let lastTypeEncountered: EmployeeState['lastShiftType'] = undefined;
     let lastWorkShiftEnd: Date | null = null;
 
-    for (let i = lookbackDays; i >= 1; i--) {
-      const dateToCheck = subDays(firstDayOfCurrentMonth, i);
+    for (let i = lookbackDays - 1; i >= 0; i--) {
+      const dateToCheck = subDays(firstDayOfCurrentMonth, i + 1); // Iterate from oldest to newest day
       const dateToCheckStr = format(dateToCheck, 'yyyy-MM-dd');
       const shiftToday = sortedPreviousShifts.find(s => s.date === dateToCheckStr && s.employeeName === emp.nombre);
 
@@ -62,15 +62,15 @@ export function initializeEmployeeStatesFromHistory(
           lastTypeEncountered = shiftType;
           const { endTime: shiftEndTimeStr } = getShiftDetails(shiftType);
           lastWorkShiftEnd = getShiftDateTime(dateToCheck, shiftEndTimeStr, shiftType === 'N');
-        } else if (shiftType === 'D' || shiftType === 'F' || shiftType === 'LAO' || shiftType === 'LM' || shiftType === 'C') {
-          currentConsecutiveRest = (lastTypeEncountered === 'D' || lastTypeEncountered === 'F' || lastTypeEncountered === 'LAO' || lastTypeEncountered === 'LM' || lastTypeEncountered === 'C' || lastTypeEncountered === undefined) ? currentConsecutiveRest + 1 : 1;
+        } else { // D, F, LAO, LM, C
+          currentConsecutiveRest = (lastTypeEncountered === 'D' || lastTypeEncountered === 'F' || lastTypeEncountered === 'LAO' || lastTypeEncountered === 'LM' || lastTypeEncountered === 'C') ? currentConsecutiveRest + 1 : 1;
           currentConsecutiveWork = 0;
           lastTypeEncountered = shiftType;
         }
-      } else { 
+      } else { // No shift found for the day
         currentConsecutiveRest = (lastTypeEncountered === 'D' || lastTypeEncountered === 'F' || lastTypeEncountered === 'LAO' || lastTypeEncountered === 'LM' || lastTypeEncountered === 'C' || lastTypeEncountered === undefined) ? currentConsecutiveRest + 1 : 1;
         currentConsecutiveWork = 0;
-        lastTypeEncountered = 'D';
+        lastTypeEncountered = 'D'; // Assume rest day if no shift
       }
     }
     employeeStates[emp.id_empleado] = {

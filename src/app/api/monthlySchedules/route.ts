@@ -25,8 +25,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const newScheduleId = await createMonthlySchedule(body);
-    return NextResponse.json({ id: newScheduleId }, { status: 201 });
+    const newSchedule = await createMonthlySchedule(body);
+    return NextResponse.json(newSchedule, { status: 201 });
   } catch (error) {
     console.error('Error in POST /api/monthlySchedules:', error);
     return NextResponse.json({ message: 'Error creating schedule' }, { status: 500 });

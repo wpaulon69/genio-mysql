@@ -141,15 +141,21 @@ export async function evaluateScheduleMetrics(
                     evalCtx.score -= rulesConfig.scorePenalties.maxConsecutiveWorkDaysViolation; evalCtx.scoreBreakdown.serviceRules -= rulesConfig.scorePenalties.maxConsecutiveWorkDaysViolation;
                 }
 
-            } else { 
-                state.consecutiveRestDays = isRestDay(state.lastShiftType) ? state.consecutiveRestDays + 1 : 1;
+            } else {
                 state.consecutiveWorkDays = 0;
-                state.lastShiftType = shiftType || 'D'; 
+                
+                // Si el turno anterior fue de descanso, incrementa los días de descanso consecutivos.
+                // Si no, reinicia a 1 (este es el primer día de descanso después de trabajar).
+                const newConsecutiveRestDays = isRestDay(state.lastShiftType) ? state.consecutiveRestDays + 1 : 1;
 
-                if (state.consecutiveRestDays > rulesConfig.maxConsecutiveDaysOff) {
-                    evalCtx.violations.push({ employeeName: emp.nombre, date: currentDateStrYYYYMMDD, shiftType: 'General', rule: "Exceso Días Descanso Consecutivos", details: `Descansó ${state.consecutiveRestDays} días (máx: ${rulesConfig.maxConsecutiveDaysOff}).`, severity: 'warning', category: 'employeeWellbeing' });
+                // Verifica la violación ANTES de actualizar el estado para registrarla en el día correcto.
+                if (newConsecutiveRestDays > rulesConfig.maxConsecutiveDaysOff) {
+                    evalCtx.violations.push({ employeeName: emp.nombre, date: currentDateStrYYYYMMDD, shiftType: 'General', rule: "Exceso Días Descanso Consecutivos", details: `Descansó ${newConsecutiveRestDays} días (máx: ${rulesConfig.maxConsecutiveDaysOff}).`, severity: 'warning', category: 'employeeWellbeing' });
                     evalCtx.score -= rulesConfig.scorePenalties.maxConsecutiveDaysOffViolation; evalCtx.scoreBreakdown.employeeWellbeing -= rulesConfig.scorePenalties.maxConsecutiveDaysOffViolation;
                 }
+                
+                state.consecutiveRestDays = newConsecutiveRestDays;
+                state.lastShiftType = 'D'; // Si no hay turno de trabajo, es un día de descanso.
             }
         }
 

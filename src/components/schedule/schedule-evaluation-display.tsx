@@ -19,6 +19,7 @@ interface ScheduleEvaluationDisplayProps {
 }
 
 export default function ScheduleEvaluationDisplay({ score, violations, scoreBreakdown, context = 'viewer' }: ScheduleEvaluationDisplayProps) {
+  console.log("DEBUG: ScheduleEvaluationDisplay props recibidas:", { score, violations, scoreBreakdown, context });
   const scoreToDisplay = score;
   const violationsToDisplay = violations;
   const breakdownToDisplay = scoreBreakdown;
@@ -125,7 +126,7 @@ export default function ScheduleEvaluationDisplay({ score, violations, scoreBrea
                                   {v.date && <><strong>Fecha:</strong> {v.date} </>}
                                   {v.shiftType && v.shiftType !== 'General' && <><strong>Turno:</strong> {v.shiftType} </>}
                                 </p>
-                                <p className="text-sm mt-1.5">{v.message}</p>
+                                <p className="text-sm mt-1.5">{v.details}</p>
                               </div>
                             </div>
                           </li>

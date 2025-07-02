@@ -52,27 +52,32 @@ export async function getMonthlySchedules(
         }
 
         const [scheduleRows] = await connection.execute(query, params);
-        console.log('[DEBUG] scheduleRows recuperados:', JSON.stringify(scheduleRows, null, 2));
+        
         const schedules: MonthlySchedule[] = [];
 
         for (const scheduleRow of scheduleRows as any[]) {
             const scheduleId = scheduleRow.id;
 
-            console.log(`[DEBUG] Ejecutando consulta de shifts para horario_id: ${scheduleId}`);
-            const [shifts] = await connection.execute(
-                'SELECT hd.*, e.nombre as employeeName, s.nombre_servicio as serviceName FROM `horario_detalles` hd LEFT JOIN `empleados` e ON hd.employeeId = e.id_empleado LEFT JOIN `servicios` s ON hd.serviceId = s.id_servicio WHERE hd.`horario_id` = ?',
-                [scheduleId]
-            );
+            
+            let shiftsQuery = 'SELECT hd.*, e.nombre as employeeName, s.nombre_servicio as serviceName FROM `horario_detalles` hd LEFT JOIN `empleados` e ON hd.employeeId = e.id_empleado LEFT JOIN `servicios` s ON hd.serviceId = s.id_servicio WHERE hd.`horario_id` = ?';
+            const shiftsParams: (string | number)[] = [scheduleId];
+
+            if (year && month) {
+                const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+                const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+                const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+                shiftsQuery += ' AND hd.date BETWEEN ? AND ?';
+                shiftsParams.push(startDate, endDate);
+            }
+
+            const [shifts] = await connection.execute(shiftsQuery, shiftsParams);
             const [violations] = await connection.execute(
                 'SELECT p.*, e.nombre as employeeName FROM `problemashorarios` p LEFT JOIN `empleados` e ON p.employeeId = e.id_empleado WHERE p.`monthlyScheduleId` = ?',
                 [scheduleId]
             );
             const [scoreBreakdown] = await connection.execute('SELECT * FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
 
-            console.log(`[DEBUG] Horario ID: ${scheduleId}`);
-            console.log('[DEBUG] Shifts recuperados:', JSON.stringify(shifts, null, 2));
-            console.log('[DEBUG] Violations recuperadas:', JSON.stringify(violations, null, 2));
-            console.log('[DEBUG] Score Breakdown recuperado:', JSON.stringify(scoreBreakdown, null, 2));
+            
 
             schedules.push({
                 ...scheduleRow,
@@ -90,10 +95,18 @@ export async function getMonthlySchedules(
 
 import { getEmployees } from './employees';
 
-export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'>): Promise<string> {
+export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'>): Promise<MonthlySchedule> {
     const connection = await getConnection();
     try {
         await connection.beginTransaction();
+
+        // Si se publica un nuevo horario, archivar cualquier otro que estuviera publicado para el mismo período.
+        if (schedule.status === 'published') {
+            await connection.execute(
+                'UPDATE horarios SET status = "archived" WHERE year = ? AND month = ? AND serviceId = ? AND status = "published"',
+                [schedule.year, schedule.month, schedule.serviceId]
+            );
+        }
 
         const { shifts, violations, scoreBreakdown, horario_nombre, ...mainScheduleData } = schedule; // Incluir horario_nombre
         const allEmployees = await getEmployees();
@@ -120,7 +133,7 @@ export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'
         if (violations && violations.length > 0) {
             const violationValues = violations.map(v => {
                 // Intenta encontrar el empleado por el nombre en el mensaje de la violación
-                const employeeNameMatch = v.details.match(/^(.*?)\s+tuvo/);
+                const employeeNameMatch = v.details ? v.details.match(/^(.*?)\s+tuvo/) : null;
                 const employeeName = employeeNameMatch ? employeeNameMatch[1] : v.employeeName;
                 const employee = employeeName ? allEmployees.find((e: any) => e.nombre === employeeName) : null;
                 return [scheduleId, employee ? employee.id_empleado : v.employeeId, v.date, v.details];
@@ -133,7 +146,20 @@ export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'
         }
 
         await connection.commit();
-        return scheduleId.toString();
+        
+        // Obtener y devolver el horario recién creado
+        const [newScheduleRows] = await connection.execute('SELECT * FROM horarios WHERE id = ?', [scheduleId]);
+        const newSchedule = (newScheduleRows as any)[0];
+
+        // Devolver el objeto completo para que el frontend pueda usarlo
+        return {
+            ...newSchedule,
+            id: newSchedule.id.toString(),
+            shifts: shifts || [],
+            violations: violations || [],
+            scoreBreakdown: scoreBreakdown || null,
+        };
+
     } catch (error) {
         await connection.rollback();
         console.error("Error creating monthly schedule:", error);
@@ -148,6 +174,14 @@ export async function updateMonthlySchedule(schedule: MonthlySchedule): Promise<
     try {
         await connection.beginTransaction();
         const scheduleId = schedule.id;
+
+        // Si se actualiza un horario a 'publicado', archivar cualquier otro que ya lo estuviera.
+        if (schedule.status === 'published') {
+            await connection.execute(
+                'UPDATE horarios SET status = "archived" WHERE year = ? AND month = ? AND serviceId = ? AND status = "published" AND id != ?',
+                [schedule.year, schedule.month, schedule.serviceId, scheduleId]
+            );
+        }
 
         // Actualizar el registro principal del horario
         await connection.execute(
@@ -181,7 +215,9 @@ export async function updateMonthlySchedule(schedule: MonthlySchedule): Promise<
 
         if (schedule.violations && schedule.violations.length > 0) {
             const violationValues = schedule.violations.map(v => {
-                const employee = allEmployees.find((e: any) => e.nombre === v.employeeName);
+                const employeeNameMatch = v.details ? v.details.match(/^(.*?)\s+tuvo/) : null;
+                const employeeName = employeeNameMatch ? employeeNameMatch[1] : v.employeeName;
+                const employee = employeeName ? allEmployees.find((e: any) => e.nombre === employeeName) : null;
                 return [scheduleId, employee ? employee.id_empleado : v.employeeId, v.date, v.details];
             });
             await connection.query('INSERT INTO `problemashorarios` (monthlyScheduleId, employeeId, date, message) VALUES ?', [violationValues]);

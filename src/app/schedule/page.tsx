@@ -47,11 +47,7 @@ export default function SchedulePage() {
   const [selectedScheduleToDisplay, setSelectedScheduleToDisplay] = useState<MonthlySchedule | null>(null);
   const [scheduleInEdit, setScheduleInEdit] = useState<MonthlySchedule | null>(null);
 
-  useEffect(() => {
-    if (scheduleInEdit) {
-      console.log('--- DEBUG: scheduleInEdit STATE UPDATED ---', JSON.stringify(scheduleInEdit, null, 2));
-    }
-  }, [scheduleInEdit]);
+  
 
   const { data: employees = [], isLoading: isLoadingEmployees, error: errorEmployees } = useQuery<Employee[]>({
     queryKey: ['employees'],
@@ -173,9 +169,9 @@ export default function SchedulePage() {
       const scheduleData = {
         id: scheduleInEdit?.id, // Si existe, es una actualización
         horario_nombre: scheduleInEdit?.horario_nombre || `Horario ${selectedServiceForView.nombre_servicio} ${scheduleMonths.find(m => m.value === selectedMonthView)?.label} ${selectedYearView}`,
-        id_servicio: selectedServiceForView.id_servicio,
-        mes: parseInt(selectedMonthView),
-        año: parseInt(selectedYearView),
+        serviceId: selectedServiceForView.id_servicio.toString(),
+        month: selectedMonthView,
+        year: selectedYearView,
         shifts: shifts,
         status: status,
         score: evaluation?.score || 0,
@@ -212,6 +208,47 @@ export default function SchedulePage() {
   const handleSaveSchedule = (shifts: AIShift[], status: 'published' | 'draft', evaluation: any) => {
     saveScheduleMutation.mutate({ shifts, status, evaluation });
   };
+
+  const createDraftFromPublishedMutation = useMutation({
+    mutationFn: async (schedule: MonthlySchedule) => {
+      const newDraftData = {
+        ...schedule,
+        status: 'draft',
+        horario_nombre: `(Copia) ${schedule.horario_nombre || `Horario ID: ${schedule.id}`}`,
+        version: 1,
+        // Quitar el id para que se cree un nuevo registro
+        id: undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const response = await fetch('/api/monthlySchedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newDraftData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al crear el borrador.');
+      }
+      // La respuesta de POST debería incluir el nuevo horario completo o al menos su ID
+      // Asumimos que devuelve el objeto completo para poder editarlo
+      return response.json();
+    },
+    onSuccess: (newlyCreatedSchedule) => {
+      toast({ title: "Borrador Creado", description: "Se ha creado una copia editable del horario publicado." });
+      queryClient.invalidateQueries({ queryKey: ['allMonthlySchedules', selectedYearView, selectedMonthView, selectedServiceIdView] });
+      // Necesitamos el horario completo para editarlo, si la API solo devuelve el ID, habría que buscarlo.
+      // Por ahora, asumimos que la API podría devolver el objeto o que podemos construirlo.
+      // Lo ideal es que la API devuelva el nuevo objeto. Asumiendo que lo hace:
+      setScheduleInEdit(newlyCreatedSchedule);
+      setActiveTab("generate-shifts");
+    },
+    onError: (error: Error) => {
+      toast({ variant: "destructive", title: "Error al Crear Borrador", description: error.message });
+    },
+  });
 
   if (isLoading) {
     return (
@@ -346,31 +383,6 @@ export default function SchedulePage() {
                     <CardDescription>
                       Servicio: {selectedServiceForView.nombre_servicio} - Mes: {scheduleMonths.find(m=>m.value === selectedMonthView)?.label} {selectedYearView}
                     </CardDescription>
-                     <CardFooter className="border-t pt-4 mt-2 -mx-6 px-6 pb-0 flex flex-col md:flex-row justify-end gap-2">
-                       {selectedScheduleToDisplay.status === 'draft' && (
-                         <Button
-                           variant="outline"
-                           onClick={() => {
-                             setScheduleInEdit(selectedScheduleToDisplay);
-                             setActiveTab("generate-shifts"); // Cambiar a la pestaña de edición
-                           }}
-                           className="w-full md:w-auto"
-                         >
-                           <Pencil className="mr-2 h-4 w-4" /> Editar Borrador
-                         </Button>
-                       )}
-                       {selectedScheduleToDisplay.status === 'published' && (
-                         <Button
-                           variant="outline"
-                           onClick={handleArchiveClick}
-                           disabled={archiveScheduleMutation.isPending}
-                           className="w-full md:w-auto"
-                         >
-                           {archiveScheduleMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ArchiveIcon className="mr-2 h-4 w-4" />}
-                           Archivar Horario
-                         </Button>
-                       )}
-                     </CardFooter>
                   </CardHeader>
                   <CardContent>
                     {selectedScheduleToDisplay.shifts && selectedScheduleToDisplay.shifts.length > 0 ? (
@@ -394,7 +406,7 @@ export default function SchedulePage() {
                                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{employee.nombre}</td>
                                       {Array.from({ length: getDaysInMonth(new Date(parseInt(selectedYearView), parseInt(selectedMonthView) - 1)) }, (_, i) => i + 1).map(day => {
                                         const shiftDate = format(new Date(parseInt(selectedYearView), parseInt(selectedMonthView) - 1, day), 'yyyy-MM-dd');
-                                        const shift = selectedScheduleToDisplay.shifts.find(s => s.employeeName === employee.nombre && s.date.substring(0, 10) === shiftDate);
+                                        const shift = selectedScheduleToDisplay.shifts.find(s => s.employeeName === employee.nombre && new Date(s.date).toISOString().substring(0, 10) === shiftDate);
                                         const shiftType = shift ? getShiftType(shift) : '-';
                                         return (
                                           <td key={`${employee.id_empleado}-${day}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{shiftType}</td>
@@ -423,6 +435,42 @@ export default function SchedulePage() {
                       </Alert>
                     )}
                   </CardContent>
+                   <CardFooter className="border-t pt-4 mt-4 flex flex-col md:flex-row justify-end gap-2">
+                     {selectedScheduleToDisplay.status === 'draft' && (
+                       <Button
+                         variant="outline"
+                         onClick={() => {
+                           setScheduleInEdit(selectedScheduleToDisplay);
+                           setActiveTab("generate-shifts");
+                         }}
+                         className="w-full md:w-auto"
+                       >
+                         <Pencil className="mr-2 h-4 w-4" /> Editar Borrador
+                       </Button>
+                     )}
+                     {selectedScheduleToDisplay.status === 'published' && (
+                      <>
+                         <Button
+                           variant="outline"
+                           onClick={() => createDraftFromPublishedMutation.mutate(selectedScheduleToDisplay)}
+                           disabled={createDraftFromPublishedMutation.isPending}
+                           className="w-full md:w-auto"
+                         >
+                           {createDraftFromPublishedMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Pencil className="mr-2 h-4 w-4" />}
+                           Crear Borrador para Editar
+                         </Button>
+                         <Button
+                           variant="destructive"
+                           onClick={handleArchiveClick}
+                           disabled={archiveScheduleMutation.isPending}
+                           className="w-full md:w-auto"
+                         >
+                           {archiveScheduleMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ArchiveIcon className="mr-2 h-4 w-4" />}
+                           Archivar Horario
+                         </Button>
+                       </>
+                     )}
+                   </CardFooter>
                 </Card>
               )}
             </>
@@ -444,6 +492,15 @@ export default function SchedulePage() {
               onBackToConfig={() => setScheduleInEdit(null)}
               onSave={handleSaveSchedule}
               isSaving={saveScheduleMutation.isPending}
+              onEvaluationComplete={(evaluationResult) => {
+                setScheduleInEdit(prev => prev ? {
+                  ...prev,
+                  score: evaluationResult?.score,
+                  violations: evaluationResult?.violations,
+                  scoreBreakdown: evaluationResult?.scoreBreakdown,
+                  responseText: evaluationResult?.responseText,
+                } : null);
+              }}
             />
           ) : (
             <Card className="mb-6 shadow-md hover:shadow-lg transition-shadow duration-300">
@@ -493,19 +550,18 @@ export default function SchedulePage() {
 
           {!isLoadingSchedulesList && !errorSchedulesList && selectedServiceIdView && selectedMonthView && selectedYearView && !scheduleInEdit && (
             <>
-              {availableSchedules.length > 0 ? (
+              {availableSchedules.filter(s => s.status === 'draft').length > 0 ? (
                 <Card className="mt-4">
-                  <CardHeader><CardTitle>Horarios Disponibles para Editar</CardTitle></CardHeader>
+                  <CardHeader><CardTitle>Borradores Disponibles para Editar</CardTitle></CardHeader>
                   <CardContent>
                     <ul className="space-y-2">
-                      {availableSchedules.map(schedule => (
-                        <li key={schedule.id} className={`p-2 border rounded-md hover:bg-accent cursor-pointer flex justify-between items-center ${selectedScheduleToDisplay?.id === schedule.id ? 'bg-accent' : ''}`} onClick={() => setScheduleInEdit(schedule)}>
+                      {availableSchedules.filter(s => s.status === 'draft').map(schedule => (
+                        <li key={schedule.id} className={`p-2 border rounded-md hover:bg-accent cursor-pointer flex justify-between items-center`} onClick={() => setScheduleInEdit(schedule)}>
                           <div>
                             <span className="font-semibold">{schedule.horario_nombre || `Horario ID: ${schedule.id}`}</span>
-                            <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${schedule.status === 'published' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>{schedule.status}</span>
+                            <span className={`ml-2 px-2 py-0.5 text-xs rounded-full bg-yellow-200 text-yellow-800`}>{schedule.status}</span>
                             <p className="text-sm text-muted-foreground">Actualizado: {format(new Date(schedule.updatedAt), 'dd/MM/yyyy HH:mm')}</p>
                           </div>
-                          {selectedScheduleToDisplay?.id === schedule.id && <span className="text-primary font-bold"> (Viendo)</span>}
                         </li>
                       ))}
                     </ul>

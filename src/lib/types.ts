@@ -134,6 +134,7 @@ export interface InteractiveScheduleGridProps {
   isReadOnly?: boolean;
   onSave?: (shifts: AIShift[], status: 'published' | 'draft', evaluationResult: any | null) => void;
   isSaving?: boolean;
+  onEvaluationComplete?: (evaluationResult: any | null) => void; // Nueva prop para notificar la evaluación
 }
 
 export interface EmployeeReportMetrics {
