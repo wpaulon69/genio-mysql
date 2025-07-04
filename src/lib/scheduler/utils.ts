@@ -28,7 +28,7 @@ export function getShiftType(shift: AIShift | null | undefined): 'M' | 'T' | 'N'
     console.log(`DEBUG: getShiftType returning 'F' for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'F';
   }
-  if (note === 'D' || note === 'D (DESCANSO)' || note?.includes('DESCANSO') || note === 'D (FIJO SEMANAL)' || note === 'D (FDS OBJETIVO)') {
+  if (note === 'D' || note === 'D (DESCANSO)' || note?.includes('DESCANSO') || note === 'D (FIJO SEMANAL)' || note === 'D (FDS OBJETIVO)' || note === 'D (FIJO)') {
     console.log(`DEBUG: getShiftType returning 'D' for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'D';
   }

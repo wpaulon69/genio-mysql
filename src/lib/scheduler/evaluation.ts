@@ -7,7 +7,7 @@ import { format, getDaysInMonth, getDay, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { ScheduleRulesConfig } from './config';
 import type { EvaluationContext } from './state';
-import { getShiftTypeForEval, getShiftDetails, getShiftDateTime, isRestDay } from './utils';
+import { getShiftTypeForEval, getShiftDetails, getShiftDateTime, isRestDay, normalizeDayName } from './utils';
 import { initializeEmployeeStatesFromHistory } from './state';
 import { canAssignShiftDueToRest } from './utils';
 
@@ -111,7 +111,38 @@ export async function evaluateScheduleMetrics(
             const state = employeeStates[emp.id_empleado.toString()];
             const shiftForEmployeeToday = shiftsToEvaluate.find(s => s.employeeName === emp.nombre && s.date === currentDateStrYYYYMMDD);
             
-            const shiftType = shiftForEmployeeToday ? getShiftTypeForEval(shiftForEmployeeToday) : 'D'; 
+            const shiftType = shiftForEmployeeToday ? getShiftTypeForEval(shiftForEmployeeToday) : 'D';
+            const dayOfWeekName = normalizeDayName(getDay(currentDate));
+            const fixedShiftPref = emp.turnos_fijos?.find(tf => tf.dia_semana === dayOfWeekName);
+
+            if (fixedShiftPref) {
+                const isHolidayOverride = isHolidayDay && !emp.trabaja_feriados;
+                if (!isHolidayOverride) {
+                    const prefShiftType = fixedShiftPref.tipo_turno;
+                    let assignedShiftEquivalent: 'Mañana' | 'Tarde' | 'Noche' | 'Descanso';
+
+                    switch (shiftType) {
+                        case 'M': assignedShiftEquivalent = 'Mañana'; break;
+                        case 'T': assignedShiftEquivalent = 'Tarde'; break;
+                        case 'N': assignedShiftEquivalent = 'Noche'; break;
+                        default: assignedShiftEquivalent = 'Descanso'; break;
+                    }
+
+                    if (prefShiftType !== assignedShiftEquivalent) {
+                        evalCtx.violations.push({
+                            employeeName: emp.nombre,
+                            date: currentDateStrYYYYMMDD,
+                            shiftType: shiftType as 'M' | 'T' | 'N' | 'General',
+                            rule: "Violación de Turno Fijo",
+                            details: `Turno asignado (${assignedShiftEquivalent}) no coincide con preferencia fija (${prefShiftType}).`,
+                            severity: 'error',
+                            category: 'employeeWellbeing'
+                        });
+                        evalCtx.score -= rulesConfig.scorePenalties.fixedShiftViolation;
+                        evalCtx.scoreBreakdown.employeeWellbeing -= rulesConfig.scorePenalties.fixedShiftViolation;
+                    }
+                }
+            }
 
             if (shiftType === 'M' || shiftType === 'T' || shiftType === 'N') {
                 state.shiftsThisMonth++;

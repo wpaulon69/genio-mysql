@@ -24,7 +24,7 @@ const employeeSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio"),
   email_empleado: z.string().email("Email inválido"),
   id_servicio: z.coerce.number().min(1, "Debe seleccionar un servicio"),
-  tipo_patron_trabajo: z.string().min(1, "El patrón de trabajo es obligatorio"),
+  trabaja_feriados: z.boolean(),
   elegible_franco_pos_guardia: z.boolean(),
   prefiere_trabajar_fines_semana: z.boolean(),
   disponibilidad_general: z.string().optional(),
@@ -59,7 +59,7 @@ export default function EmployeeForm({ isOpen, onClose, onSubmit, employee, avai
       nombre: '',
       email_empleado: '',
       id_servicio: 0,
-      tipo_patron_trabajo: '',
+      trabaja_feriados: false,
       elegible_franco_pos_guardia: false,
       prefiere_trabajar_fines_semana: false,
       disponibilidad_general: '',
@@ -125,9 +125,6 @@ export default function EmployeeForm({ isOpen, onClose, onSubmit, employee, avai
                       </SelectContent>
                     </Select>
                   <FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="tipo_patron_trabajo" render={({ field }) => (
-                    <FormItem><FormLabel>Patrón de Trabajo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <div className="flex items-center space-x-4">
                     <FormField control={form.control} name="elegible_franco_pos_guardia" render={({ field }) => (

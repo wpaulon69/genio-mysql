@@ -18,7 +18,8 @@ ShiftFlow es una aplicación web diseñada para la planificación y gestión int
     - **Zod:** Para validación de esquemas.
     - **Recharts:** Para la visualización de gráficos en informes.
 - **Backend & Base de Datos:**
-    - **Firebase Firestore:** Base de datos NoSQL en la nube para almacenar toda la información de la aplicación (servicios, empleados, horarios, feriados, etc.).
+    - **MySQL:** Base de datos relacional para almacenar toda la información de la aplicación (servicios, empleados, horarios, feriados, etc.).
+    - **Next.js API Routes:** Como backend para interactuar con la base de datos MySQL.
 - **Inteligencia Artificial:**
     - **Genkit (Firebase GenAI):** Framework para construir flujos de IA, conectándose a modelos de lenguaje grandes (LLMs) como Gemini para generación de texto y análisis.
 - **Gestión de Estado del Servidor:**
@@ -56,7 +57,7 @@ El proyecto sigue una estructura típica para aplicaciones Next.js con el App Ro
 │   ├── hooks/              # Hooks personalizados de React (ej. useToast, useMobile)
 │   ├── lib/                # Utilidades, tipos, y lógica de negocio no-UI
 │   │   ├── constants/      # Constantes de la aplicación (ej. opciones de turno)
-│   │   ├── firebase/       # Interacciones con Firebase (config, CRUD para colecciones)
+│   │   ├── mysql/          # Lógica de interacción con la base de datos MySQL
 │   │   ├── scheduler/      # Lógica del generador algorítmico de horarios
 │   │   ├── types.ts        # Definiciones de TypeScript para tipos e interfaces
 │   │   └── utils.ts        # Funciones de utilidad generales
@@ -78,7 +79,7 @@ El proyecto sigue una estructura típica para aplicaciones Next.js con el App Ro
 - Permite definir y administrar los diferentes servicios del hospital (ej. Emergencias, Cardiología).
 - Cada servicio tiene reglas de dotación de personal (cuántos empleados por turno en días de semana y fines de semana/feriados), si habilita turno noche, reglas de consecutividad de trabajo/descanso, y un objetivo de fines de semana completos de descanso al mes.
 - **Componentes Clave:** `src/app/services/page.tsx`, `src/components/services/service-form.tsx`, `src/components/services/service-list.tsx`.
-- **Datos Firebase:** Colección `services`. Ver `src/lib/firebase/services.ts` para detalles de la interacción.
+- **Datos MySQL:** Tabla `servicios`. Ver `src/lib/mysql/services.ts` para detalles de la interacción.
 - **Campos del Servicio:**
     - `name`: Nombre del servicio.
     - `description`: Descripción.
@@ -91,19 +92,19 @@ El proyecto sigue una estructura típica para aplicaciones Next.js con el App Ro
 ### 4.2. Gestión de Empleados
 - Mantiene un directorio del personal del hospital.
 - Cada empleado tiene información de contacto, roles, servicios a los que puede ser asignado.
-- **Preferencias del Empleado:**
-    - **Elegibilidad para día libre post-guardia (D/D):** Esta preferencia (`eligibleForDayOffAfterDuty`) se registra para cada empleado. Sin embargo, es importante notar que el algoritmo de generación de horarios actual (`src/lib/scheduler/algorithmic-scheduler.ts`) **no utiliza explícitamente esta preferencia** para forzar un día de descanso después de un turno específico (ej. Noche). La asignación de descansos se basa en las reglas generales de consecutividad del servicio, las asignaciones fijas y la necesidad de cubrir turnos. Esta podría ser un área de mejora futura para el algoritmo.
-    - Preferencia por trabajar fines de semana (`prefersWeekendWork`).
-    - Patrón de trabajo general (`workPattern`: Rotación Estándar, L-V Mañana Fijo, L-V Tarde Fijo).
-    - Turno fijo semanal (`fixedWeeklyShiftDays`, `fixedWeeklyShiftTiming`): Días y horario específico, si aplica para Rotación Estándar.
-- **Asignaciones Fijas:** Permite registrar periodos de descanso (D), licencias anuales (LAO) o médicas (LM) para un empleado.
-- **Componentes Clave:** `src/app/employees/page.tsx`, `src/components/employees/employee-form.tsx`, `src/components/employees/employee-list.tsx`.
-- **Datos Firebase:** Colección `employees`. Ver `src/lib/firebase/employees.ts` para detalles de la interacción. Los datos se limpian antes de guardarse y se aplican valores por defecto para campos opcionales.
+- **Preferencias del Empleado (Sistema Unificado):**
+    - **Turnos Fijos:** La configuración principal del horario de un empleado se gestiona a través de una grilla semanal explícita (Lunes a Domingo) donde se define si trabaja (Mañana, Tarde, Noche) o descansa. Esta es la única fuente de verdad para los patrones de trabajo.
+    - **Plantillas de Horario:** Para facilitar la configuración, la interfaz permite aplicar plantillas (ej. "Lunes a Viernes (Mañana)") que rellenan la grilla semanal, la cual sigue siendo 100% editable.
+    - **Preferencia de Feriados (`trabaja_feriados`):** Un booleano que indica si el empleado debe trabajar en días feriados que caen dentro de su jornada laboral. Si es `false` (por defecto), se le asignará un día libre.
+    - **Preferencia de Fines de Semana (`prefiere_trabajar_fines_semana`):** Un booleano que se usa como criterio de desempate suave. Si se necesita personal en fin de semana, el algoritmo priorizará a los empleados flexibles que tengan esta opción marcada.
+- **Asignaciones Especiales:** Permite registrar periodos de licencias (anuales, médicas, etc.) que tienen prioridad sobre cualquier otra regla de horario.
+- **Componentes Clave:** `src/app/employees/page.tsx`, `src/components/employees/employee-form.tsx`, `src/components/employees/employee-preferences-form.tsx`.
+- **Datos MySQL:** Tabla `empleados`. Ver `src/lib/mysql/employees.ts` para detalles de la interacción.
 
 ### 4.3. Gestión de Feriados
 - Permite definir y organizar los días feriados, que son tenidos en cuenta por el planificador de horarios.
 - **Componentes Clave:** `src/app/holidays/page.tsx`, `src/components/holidays/holiday-form.tsx`, `src/components/holidays/holiday-list.tsx`.
-- **Datos Firebase:** Colección `holidays`. Ver `src/lib/firebase/holidays.ts` para detalles de la interacción. Los feriados se almacenan con fechas en formato YYYY-MM-DD.
+- **Datos MySQL:** Tabla `holidays`. Ver `src/lib/mysql/holidays.ts` para detalles de la interacción. Los feriados se almacenan con fechas en formato YYYY-MM-DD.
 
 ### 4.4. Generación y Gestión de Horarios
 - **Núcleo de la aplicación.** Permite generar, visualizar y editar horarios de turnos.
@@ -111,15 +112,19 @@ El proyecto sigue una estructura típica para aplicaciones Next.js con el App Ro
     - Los horarios se pueden trabajar como **borradores** (`draft`).
     - Un borrador puede ser **publicado** (`published`), convirtiéndose en el horario activo para un servicio/mes/año. Solo puede haber un horario publicado.
     - Al publicar un nuevo horario, la versión publicada anterior (si existía) se **archiva** (`archived`). Los borradores también se archivan si se publican o se sobrescriben por un nuevo borrador.
-- **Generación Algorítmica:** Utiliza un planificador algorítmico (`src/lib/scheduler/algorithmic-scheduler.ts`) para crear horarios basándose en:
-    - Reglas del servicio (incluyendo `targetCompleteWeekendsOff`, cuyo cumplimiento se evalúa y se intenta favorecer suavemente durante la asignación).
-    - Preferencias y asignaciones fijas de los empleados.
-    - Feriados.
-    - Continuidad con el horario del mes anterior.
-- **Evaluación de Horarios:** El algoritmo (`generateAlgorithmicSchedule` y la función refactorizada `evaluateGeneratedSchedule`) también calcula una puntuación para el horario generado y lista cualquier violación de reglas (errores o advertencias).
-- **Edición Manual:** Los horarios (borradores o copias del publicado) se pueden editar manualmente en una grilla interactiva.
+- **Generación Algorítmica:** El núcleo de la generación se encuentra en `src/lib/scheduler/generation.ts`, principalmente en la función `generateAlgorithmicSchedule`. Este algoritmo no solo crea un horario, sino que lo hace a través de un proceso iterativo, intentando múltiples veces (hasta 15 intentos por defecto) generar un horario que supere una puntuación objetivo. El proceso diario sigue un orden de prioridad estricto:
+    1.  **Asignaciones Especiales:** Primero se procesan las licencias (LAO, LM) que tienen prioridad absoluta.
+    2.  **Turnos Fijos:** Luego, se asignan los turnos de trabajo o descanso fijos definidos en las preferencias semanales de cada empleado. Si un empleado no debe trabajar en un feriado, se le asigna un día libre.
+    3.  **Cobertura de Dotación (Empleados Flexibles):** Se utiliza un grupo de empleados "flexibles" (aquellos sin un turno fijo para ese día) para cubrir las necesidades de personal restantes para cada turno (Mañana, Tarde, Noche). Los empleados se seleccionan y ordenan mediante una lógica de clasificación compleja que considera:
+        - El cumplimiento de los descansos mínimos requeridos y preferidos.
+        - La continuación de bloques de trabajo preferidos.
+        - La preferencia explícita de trabajar fines de semana (como criterio de desempate).
+        - La equidad en el número total de turnos asignados en el mes.
+    4.  **Asignación de Descanso:** Finalmente, a todos los empleados flexibles que no fueron necesarios para cubrir la dotación se les asigna un día de descanso.
+- **Evaluación de Horarios:** Una vez que se genera un horario completo, la función `evaluateScheduleMetrics` (de `src/lib/scheduler/evaluation.ts`) lo analiza. Calcula una puntuación detallada (dividida en cumplimiento de reglas del servicio y bienestar del empleado) y genera una lista de violaciones de reglas (errores y advertencias). El generador selecciona el mejor horario de todos los intentos basándose en esta puntuación.
+- **Edición Manual:** Los horarios (ya sean borradores o copias de uno publicado) se pueden modificar manualmente a través de una grilla interactiva, permitiendo ajustes finos.
 - **Componentes Clave:** `src/app/schedule/page.tsx`, `src/components/schedule/shift-generator-form.tsx`, `src/components/schedule/InteractiveScheduleGrid.tsx`, `src/components/schedule/schedule-evaluation-display.tsx`.
-- **Datos Firebase:** Colección `monthlySchedules`. Ver `src/lib/firebase/monthlySchedules.ts` para la lógica de guardado, recuperación y estados de los horarios. Cada horario tiene una `scheduleKey` (YYYY-MM-ServiceID) y una `version`.
+- **Datos MySQL:** Tabla `monthly_schedules`. Ver `src/lib/mysql/monthlySchedules.ts` para la lógica de guardado, recuperación y estados de los horarios.
 
 ### 4.5. Informes y Analíticas
 - Proporciona información sobre la utilización del personal y las operaciones.
@@ -159,14 +164,16 @@ La aplicación utiliza una variedad de componentes de `src/components/ui/` que s
 ### 5.3. Componentes Específicos de la Aplicación
 Los componentes específicos de cada módulo (ej. `service-form.tsx`, `employee-list.tsx`, `InteractiveScheduleGrid.tsx`) se encuentran en sus respectivas carpetas dentro de `src/components/`. Estos combinan componentes de ShadCN UI y lógica de React para implementar las funcionalidades requeridas. Los comentarios JSDoc en cada archivo proporcionan más detalles.
 
-## 6. Firebase
-- **Firestore:** Utilizado como base de datos principal. Las colecciones principales son:
-    - `services`: Para los servicios del hospital. Ver `src/lib/firebase/services.ts`.
-    - `employees`: Para la información del personal. Ver `src/lib/firebase/employees.ts`.
-    - `holidays`: Para los días feriados. Ver `src/lib/firebase/holidays.ts`.
-    - `monthlySchedules`: Para los horarios generados (con sus estados `draft`, `published`, `archived`). Ver `src/lib/firebase/monthlySchedules.ts`.
-- La configuración de Firebase se encuentra en `src/lib/firebase/config.ts`.
-- Las funciones CRUD para cada colección están en `src/lib/firebase/`.
+## 6. Base de Datos MySQL
+- **MySQL:** Utilizado como base de datos principal. Las tablas principales son:
+    - `servicios`: Para los servicios del hospital. Ver `src/lib/mysql/services.ts`.
+    - `empleados`: Para la información del personal. Ver `src/lib/mysql/employees.ts`.
+    - `turnos_fijos`: Almacena las preferencias de turnos semanales de cada empleado.
+    - `asignaciones_empleado`: Para licencias y otras asignaciones especiales.
+    - `holidays`: Para los días feriados. Ver `src/lib/mysql/holidays.ts`.
+    - `monthly_schedules`: Para los horarios generados (con sus estados `draft`, `published`, `archived`). Ver `src/lib/mysql/monthlySchedules.ts`.
+- La configuración de la conexión a la base de datos se gestiona a través de variables de entorno.
+- Las funciones CRUD para cada tabla están en `src/lib/mysql/`.
 
 ## 7. Genkit (Inteligencia Artificial)
 

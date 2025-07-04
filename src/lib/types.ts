@@ -27,7 +27,7 @@ export interface Employee {
   id_servicio: number;
   nombre: string;
   email_empleado: string;
-  tipo_patron_trabajo: string;
+  trabaja_feriados: boolean;
   elegible_franco_pos_guardia: boolean;
   prefiere_trabajar_fines_semana: boolean;
   disponibilidad_general: string | null;

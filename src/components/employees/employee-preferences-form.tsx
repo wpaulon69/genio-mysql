@@ -13,8 +13,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '../ui/input';
+import { Checkbox } from '../ui/checkbox';
 
 const preferencesSchema = z.object({
+  trabaja_feriados: z.boolean(),
   turnos_fijos: z.array(z.object({
     dia_semana: z.enum(['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo']),
     tipo_turno: z.enum(['Mañana', 'Tarde', 'Noche', 'Descanso']),
@@ -52,12 +54,13 @@ export default function EmployeePreferencesForm({ isOpen, onClose, onSubmit, emp
   const form = useForm<PreferencesFormData>({
     resolver: zodResolver(preferencesSchema),
     defaultValues: {
+      trabaja_feriados: false,
       turnos_fijos: [],
       asignaciones: [],
     },
   });
 
-  const { fields: turnosFijosFields, append: appendTurnoFijo, remove: removeTurnoFijo } = useFieldArray({
+  const { fields: turnosFijosFields, append: appendTurnoFijo, remove: removeTurnoFijo, replace: replaceTurnosFijos } = useFieldArray({
     control: form.control,
     name: "turnos_fijos",
   });
@@ -70,11 +73,38 @@ export default function EmployeePreferencesForm({ isOpen, onClose, onSubmit, emp
   useEffect(() => {
     if (employee) {
       form.reset({
+        trabaja_feriados: employee.trabaja_feriados || false,
         turnos_fijos: employee.turnos_fijos || [],
         asignaciones: employee.asignaciones?.map(a => ({ ...a, descripcion: a.descripcion || '' })) || [],
       });
     }
   }, [employee, form]);
+
+  const applyTemplate = (template: string) => {
+    let newTurnos: TurnoFijo[] = [];
+    const weekDays = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
+    const weekend = ['Sabado', 'Domingo'];
+    switch (template) {
+      case 'lv-m':
+        newTurnos = [
+          ...weekDays.map(day => ({ dia_semana: day, tipo_turno: 'Mañana' })),
+          ...weekend.map(day => ({ dia_semana: day, tipo_turno: 'Descanso' })),
+        ] as any;
+        break;
+      case 'lv-t':
+        newTurnos = [
+          ...weekDays.map(day => ({ dia_semana: day, tipo_turno: 'Tarde' })),
+          ...weekend.map(day => ({ dia_semana: day, tipo_turno: 'Descanso' })),
+        ] as any;
+        break;
+      case 'clear':
+        newTurnos = [];
+        break;
+      default:
+        return;
+    }
+    replaceTurnosFijos(newTurnos);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isLoading) onClose(); }}>
@@ -87,9 +117,39 @@ export default function EmployeePreferencesForm({ isOpen, onClose, onSubmit, emp
             <ScrollArea className="flex-grow p-4">
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-medium">Turnos Fijos</h3>
+                  <h3 className="text-lg font-medium">Turnos Fijos y Preferencias</h3>
                   <Separator className="my-2" />
-                  <div className="space-y-2">
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex-grow">
+                        <FormLabel>Aplicar Plantilla</FormLabel>
+                        <Select onValueChange={applyTemplate}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar plantilla..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="lv-m">Lunes a Viernes (Mañana)</SelectItem>
+                            <SelectItem value="lv-t">Lunes a Viernes (Tarde)</SelectItem>
+                            <SelectItem value="clear">Limpiar / Horario Flexible</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="trabaja_feriados"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-end space-x-2 pt-6">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0">Trabaja Feriados</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 px-1 text-sm font-medium text-muted-foreground">
                       <p>Día de la Semana</p>
                       <p>Tipo de Turno</p>

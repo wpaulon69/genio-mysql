@@ -13,6 +13,7 @@ export interface ScorePenalties {
   staffingShortagePerEmployee: number;
   weekendTargetNotMetPerWeekend: number;
   maxWeekendTargetPenalty: number;
+  fixedShiftViolation: number;
 }
 
 /**
@@ -48,5 +49,6 @@ export const defaultScheduleRulesConfig: ScheduleRulesConfig = {
     staffingShortagePerEmployee: 5,
     weekendTargetNotMetPerWeekend: 2,
     maxWeekendTargetPenalty: 10,
+    fixedShiftViolation: 20,
   },
 };

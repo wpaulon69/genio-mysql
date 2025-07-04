@@ -17,7 +17,7 @@ import { SHIFT_OPTIONS, type GridShiftType } from '@/lib/constants/schedule-cons
 import { cn } from '@/lib/utils';
 import { getShiftType } from '@/lib/scheduler/utils';
 import ScheduleEvaluationDisplay from './schedule-evaluation-display';
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 
 const getShiftCellColorClass = (shiftType: GridShiftType): string => {
   switch (shiftType) {
@@ -56,6 +56,8 @@ export default function InteractiveScheduleGrid({
   const [evaluationResult, setEvaluationResult] = useState<any>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isConfirmExitOpen, setIsConfirmExitOpen] = useState(false);
 
   const monthDate = useMemo(() => new Date(parseInt(year), parseInt(month, 10) - 1, 1), [year, month]);
   const daysInMonth = useMemo(() => getDaysInMonth(monthDate), [monthDate]);
@@ -145,6 +147,7 @@ export default function InteractiveScheduleGrid({
 
   const handleSave = (status: 'published' | 'draft') => {
     if (onSave) onSave(editableShifts, status, evaluationResult);
+    setHasUnsavedChanges(false);
     setIsSaveModalOpen(false);
   };
 
@@ -201,6 +204,7 @@ export default function InteractiveScheduleGrid({
     });
     setEditableShifts(newShifts);
     onShiftsChange(newShifts);
+    setHasUnsavedChanges(true);
   };
 
   const dailyTotals = useMemo(() => {
@@ -227,10 +231,10 @@ export default function InteractiveScheduleGrid({
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex-grow">
             <Label htmlFor="schedule-name-input" className="text-sm font-medium text-muted-foreground">Nombre del Horario</Label>
-            <Input id="schedule-name-input" type="text" value={scheduleName} onChange={e => { setScheduleName(e.target.value); if (onScheduleNameChange) onScheduleNameChange(e.target.value); }} placeholder={`Ej: Horario ${targetService?.nombre_servicio} - ${monthName} ${currentYearStr}`} className="text-lg font-headline mt-1" disabled={isReadOnly} />
+            <Input id="schedule-name-input" type="text" value={scheduleName} onChange={e => { setScheduleName(e.target.value); if (onScheduleNameChange) onScheduleNameChange(e.target.value); setHasUnsavedChanges(true); }} placeholder={`Ej: Horario ${targetService?.nombre_servicio} - ${monthName} ${currentYearStr}`} className="text-lg font-headline mt-1" disabled={isReadOnly} />
             {!isReadOnly && <p className="text-sm text-muted-foreground">Puede editar los turnos manualmente. Use '-' para vaciar una celda.</p>}
           </div>
-          {!isReadOnly && onBackToConfig && <Button onClick={onBackToConfig} variant="outline"><ChevronLeft className="mr-2 h-4 w-4" /> Volver</Button>}
+          {!isReadOnly && onBackToConfig && <Button onClick={() => { if (hasUnsavedChanges) { setIsConfirmExitOpen(true); } else { onBackToConfig(); } }} variant="outline"><ChevronLeft className="mr-2 h-4 w-4" /> Volver</Button>}
         </CardHeader>
         <CardContent>
           <ScrollArea className="w-full whitespace-nowrap rounded-md border">
@@ -308,6 +312,21 @@ export default function InteractiveScheduleGrid({
             <Button onClick={() => handleSave('draft')} variant="outline" disabled={isSaving}>Guardar como Borrador</Button>
             <Button onClick={() => handleSave('published')} disabled={isSaving}>Publicar Horario</Button>
             <AlertDialogCancel disabled={isSaving}>Cancelar</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isConfirmExitOpen} onOpenChange={setIsConfirmExitOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Salir sin guardar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tiene cambios sin guardar. ¿Está seguro de que desea salir? Se perderán todos los cambios no guardados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onBackToConfig}>Salir sin Guardar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

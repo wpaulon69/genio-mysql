@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import GenerationInfo from './GenerationInfo';
 import { es } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { defaultScheduleRulesConfig, type ScheduleRulesConfig } from '@/lib/scheduler/config';
 import { useToast } from '@/hooks/use-toast';
 import InteractiveScheduleGrid from './InteractiveScheduleGrid';
 import ScheduleEvaluationDisplay from './schedule-evaluation-display';
@@ -47,7 +48,7 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showGrid, setShowGrid] = useState(false);
-  const [generationInfo, setGenerationInfo] = useState<{ service: Service; employees: Employee[] } | null>(null);
+  const [generationInfo, setGenerationInfo] = useState<{ service: Service; employees: Employee[]; rulesConfig: ScheduleRulesConfig; } | null>(null);
   const [scheduleName, setScheduleName] = useState<string>(""); // Estado para el nombre del horario
 
   const [generatedShifts, setGeneratedShifts] = useState<AIShift[] | null>(null);
@@ -108,7 +109,7 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
 
     const employeesForService = allEmployees.filter(emp => emp.id_servicio.toString() === selectedService.id_servicio.toString());
     
-    setGenerationInfo({ service: selectedService, employees: employeesForService });
+    setGenerationInfo({ service: selectedService, employees: employeesForService, rulesConfig: defaultScheduleRulesConfig });
 
     setIsGenerating(true);
     setError(null);
@@ -123,7 +124,8 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
         data.year,
         allEmployees,
         holidays,
-        null // previousMonthSchedule.shifts
+        null, // previousMonthSchedule.shifts
+        defaultScheduleRulesConfig
       );
       console.log("[ShiftGeneratorForm] Generation result:", result); // Log del resultado
       setGeneratedShifts(result.generatedShifts);
@@ -257,7 +259,7 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
       </Form>
       {generationInfo && !isGenerating && (
         <CardContent>
-          <GenerationInfo service={generationInfo.service} employees={generationInfo.employees} />
+          <GenerationInfo service={generationInfo.service} employees={generationInfo.employees} rulesConfig={generationInfo.rulesConfig} />
         </CardContent>
       )}
       {evaluation && (

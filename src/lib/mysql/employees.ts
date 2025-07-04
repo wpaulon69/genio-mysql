@@ -49,10 +49,10 @@ export async function createEmployee(employee: Omit<Employee, 'id_empleado'>): P
     const { turnos_fijos, asignaciones, ...mainEmployeeData } = employee;
 
     const [empResult] = await connection.execute(
-      'INSERT INTO empleados (id_servicio, nombre, email_empleado, tipo_patron_trabajo, elegible_franco_pos_guardia, prefiere_trabajar_fines_semana, disponibilidad_general, restricciones_especificas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO empleados (id_servicio, nombre, email_empleado, trabaja_feriados, elegible_franco_pos_guardia, prefiere_trabajar_fines_semana, disponibilidad_general, restricciones_especificas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [
         mainEmployeeData.id_servicio, mainEmployeeData.nombre, mainEmployeeData.email_empleado,
-        mainEmployeeData.tipo_patron_trabajo, mainEmployeeData.elegible_franco_pos_guardia,
+        mainEmployeeData.trabaja_feriados, mainEmployeeData.elegible_franco_pos_guardia,
         mainEmployeeData.prefiere_trabajar_fines_semana, mainEmployeeData.disponibilidad_general,
         mainEmployeeData.restricciones_especificas
       ]
@@ -91,10 +91,10 @@ export async function updateEmployee(id: number, employee: Omit<Employee, 'id_em
         const { turnos_fijos, asignaciones, ...mainEmployeeData } = employee;
 
         await connection.execute(
-            'UPDATE empleados SET id_servicio = ?, nombre = ?, email_empleado = ?, tipo_patron_trabajo = ?, elegible_franco_pos_guardia = ?, prefiere_trabajar_fines_semana = ?, disponibilidad_general = ?, restricciones_especificas = ? WHERE id_empleado = ?',
+            'UPDATE empleados SET id_servicio = ?, nombre = ?, email_empleado = ?, trabaja_feriados = ?, elegible_franco_pos_guardia = ?, prefiere_trabajar_fines_semana = ?, disponibilidad_general = ?, restricciones_especificas = ? WHERE id_empleado = ?',
             [
                 mainEmployeeData.id_servicio, mainEmployeeData.nombre, mainEmployeeData.email_empleado,
-                mainEmployeeData.tipo_patron_trabajo, mainEmployeeData.elegible_franco_pos_guardia,
+                mainEmployeeData.trabaja_feriados, mainEmployeeData.elegible_franco_pos_guardia,
                 mainEmployeeData.prefiere_trabajar_fines_semana, mainEmployeeData.disponibilidad_general,
                 mainEmployeeData.restricciones_especificas, id
             ]

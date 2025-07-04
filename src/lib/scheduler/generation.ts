@@ -14,6 +14,28 @@ import { evaluateScheduleMetrics } from './evaluation';
 const NO_FIXED_TIMING_VALUE = "none_selected";
 const REST_DAY_VALUE = "rest_day";
 
+/**
+ * Genera un horario de turnos algorítmico para un servicio y mes específicos.
+ *
+ * Esta función principal orquesta la creación de un horario basado en un conjunto de reglas complejas.
+ * Intenta múltiples veces (hasta `maxAttempts`) generar un horario que supere un `targetScore`,
+ * seleccionando el mejor resultado obtenido.
+ *
+ * El proceso diario sigue un orden de prioridad estricto:
+ * 1. Asigna licencias y asignaciones especiales.
+ * 2. Asigna turnos fijos (de trabajo o descanso) definidos en las preferencias del empleado.
+ * 3. Utiliza a los empleados "flexibles" (sin turno fijo para ese día) para cubrir las necesidades de dotación.
+ * 4. Asigna descanso a los empleados flexibles que no fueron necesarios para cubrir la dotación.
+ *
+ * @param service - El objeto del servicio para el cual se genera el horario.
+ * @param month - El mes para el cual generar el horario (ej. "7" para Julio).
+ * @param year - El año para el cual generar el horario (ej. "2025").
+ * @param allEmployees - Un array con todos los empleados del sistema.
+ * @param holidays - Un array con todos los feriados definidos.
+ * @param previousMonthShifts - Los turnos del mes anterior para mantener la continuidad de los descansos.
+ * @param rulesConfig - La configuración de reglas a aplicar (descansos, días consecutivos, etc.).
+ * @returns Una promesa que se resuelve en un objeto con el horario generado, el texto de respuesta, las violaciones y la puntuación.
+ */
 export async function generateAlgorithmicSchedule(
   service: Service,
   month: string,
@@ -74,40 +96,6 @@ export async function generateAlgorithmicSchedule(
       const dailyAssignedWorkShifts = new Set<string>(); 
       const dailyProcessedEmployees = new Set<string>(); 
 
-      for (const emp of employeesForService) {
-          const state = employeeStates[emp.id_empleado];
-          const workPattern = emp.tipo_patron_trabajo;
-          const isCurrentDayAWeekday = !isWeekendDay;
-
-          if (workPattern === 'mondayToFridayMorning' || workPattern === 'mondayToFridayAfternoon') {
-              const shiftCodeToAssign: 'M' | 'T' = workPattern === 'mondayToFridayMorning' ? 'M' : 'T';
-              if (isCurrentDayAWeekday) { 
-                  if (isHolidayDay) { 
-                      currentGeneratedShifts.push({ date: currentDateStrYYYYMMDD, employeeName: emp.nombre, serviceName: service.nombre_servicio, startTime: '', endTime: '', notes: 'F (Feriado - Patrón Fijo)' });
-                      state.consecutiveRestDays = isRestDay(state.lastShiftType) ? state.consecutiveRestDays + 1 : 1;
-                      state.consecutiveWorkDays = 0; state.lastShiftType = 'F';
-                  } else { 
-                       if (canAssignShiftDueToRest(state.lastActualWorkShiftEndTime, getShiftDateTime(currentDate, getShiftDetails(shiftCodeToAssign).startTime), rulesConfig.minimumRestHoursBetweenShifts)) {
-                          const { startTime, endTime } = getShiftDetails(shiftCodeToAssign);
-                          currentGeneratedShifts.push({ date: currentDateStrYYYYMMDD, employeeName: emp.nombre, serviceName: service.nombre_servicio, startTime, endTime, notes: `Turno Patrón` });
-                          dailyAssignedWorkShifts.add(emp.id_empleado.toString()); state.shiftsThisMonth++;
-                          const wasWorkingPreviously = state.lastShiftType === 'M' || state.lastShiftType === 'T' || state.lastShiftType === 'N';
-                          state.consecutiveWorkDays = wasWorkingPreviously ? state.consecutiveWorkDays + 1 : 1;
-                          state.consecutiveRestDays = 0; state.lastShiftType = shiftCodeToAssign;
-                          state.lastActualWorkShiftEndTime = getShiftDateTime(currentDate, endTime, false); // 'N' is not possible here
-                          if (shiftCodeToAssign === 'M') staffingNeeds.morning = Math.max(0, staffingNeeds.morning - 1);
-                          else if (shiftCodeToAssign === 'T') staffingNeeds.afternoon = Math.max(0, staffingNeeds.afternoon - 1);
-                      }
-                  }
-              } else { 
-                  currentGeneratedShifts.push({ date: currentDateStrYYYYMMDD, employeeName: emp.nombre, serviceName: service.nombre_servicio, startTime: '', endTime: '', notes: 'D (Descanso - Patrón Fijo)' });
-                  state.consecutiveRestDays = isRestDay(state.lastShiftType) ? state.consecutiveRestDays + 1 : 1;
-                  state.consecutiveWorkDays = 0; state.lastShiftType = 'D';
-              }
-              dailyProcessedEmployees.add(emp.id_empleado.toString());
-          }
-      }
-      
       employeesForService.forEach(emp => {
         if (dailyProcessedEmployees.has(emp.id_empleado.toString())) return; 
         const state = employeeStates[emp.id_empleado.toString()];
@@ -121,60 +109,57 @@ export async function generateAlgorithmicSchedule(
         }
       });
 
-      employeesForService.forEach(emp => {
-          if (dailyProcessedEmployees.has(emp.id_empleado.toString())) return;
-          const workPattern = emp.tipo_patron_trabajo;
-          if (workPattern && workPattern !== 'standardRotation') return;
-          const state = employeeStates[emp.id_empleado.toString()];
-          const fixedShifts = emp.turnos_fijos;
-          const fixedShiftForDay = fixedShifts?.find(fs => fs.dia_semana === currentDayOfWeekName);
+      // --- INICIO DE LA REESTRUCTURACIÓN ---
 
-          if (fixedShiftForDay) {
-              const fixedTiming = fixedShiftForDay.tipo_turno;
-              if (fixedTiming) {
-                  if (fixedTiming === 'Descanso') {
-                      const shiftNote = isHolidayDay ? 'F (Feriado - Descanso Fijo)' : 'D (Fijo Semanal)';
-                      const lastShiftTypeForState: EmployeeState['lastShiftType'] = isHolidayDay ? 'F' : 'D';
-                      currentGeneratedShifts.push({ date: currentDateStrYYYYMMDD, employeeName: emp.nombre, serviceName: service.nombre_servicio, startTime: '', endTime: '', notes: shiftNote });
-                      dailyProcessedEmployees.add(emp.id_empleado.toString());
-                      state.consecutiveRestDays = isRestDay(state.lastShiftType) ? state.consecutiveRestDays + 1 : 1;
-                      state.consecutiveWorkDays = 0; state.lastShiftType = lastShiftTypeForState;
-                  } else if (['Mañana', 'Tarde', 'Noche'].includes(fixedTiming)) {
-                      const shiftCode = fixedTiming.charAt(0).toUpperCase() as 'M' | 'T' | 'N';
-                      if (shiftCode === 'N' && !service.habilitar_turno_noche) return; 
-                      if (!canAssignShiftDueToRest(state.lastActualWorkShiftEndTime, getShiftDateTime(currentDate, getShiftDetails(shiftCode).startTime), rulesConfig.minimumRestHoursBetweenShifts)) return;
-                      if (isHolidayDay && !isWeekendDay) { 
-                          currentGeneratedShifts.push({ date: currentDateStrYYYYMMDD, employeeName: emp.nombre, serviceName: service.nombre_servicio, startTime: '', endTime: '', notes: `F (Feriado - Cubría ${shiftCode})` });
-                          dailyProcessedEmployees.add(emp.id_empleado.toString());
-                          state.consecutiveRestDays = isRestDay(state.lastShiftType) ? state.consecutiveRestDays + 1 : 1;
-                          state.consecutiveWorkDays = 0; state.lastShiftType = 'F';
-                      } else { 
-                          const {startTime, endTime} = getShiftDetails(shiftCode);
-                          currentGeneratedShifts.push({ date: currentDateStrYYYYMMDD, employeeName: emp.nombre, serviceName: service.nombre_servicio, startTime, endTime, notes: `Turno Fijo` });
-                          dailyAssignedWorkShifts.add(emp.id_empleado.toString()); dailyProcessedEmployees.add(emp.id_empleado.toString()); state.shiftsThisMonth++;
-                          const wasWorkingPreviously = state.lastShiftType === 'M' || state.lastShiftType === 'T' || state.lastShiftType === 'N';
-                          state.consecutiveWorkDays = wasWorkingPreviously ? state.consecutiveWorkDays + 1 : 1;
-                          state.consecutiveRestDays = 0; state.lastShiftType = shiftCode;
-                          state.lastActualWorkShiftEndTime = getShiftDateTime(currentDate, endTime, shiftCode === 'N');
-                          if (shiftCode === 'M') staffingNeeds.morning = Math.max(0, staffingNeeds.morning - 1);
-                          else if (shiftCode === 'T') staffingNeeds.afternoon = Math.max(0, staffingNeeds.afternoon - 1);
-                          else if (shiftCode === 'N') staffingNeeds.night = Math.max(0, staffingNeeds.night - 1);
-                      }
-                  }
+      // 1. Asignar turnos fijos (trabajo y descanso) de forma prioritaria
+      const employeesWithFixedShiftToday = employeesForService.filter(emp => 
+          !dailyProcessedEmployees.has(emp.id_empleado.toString()) &&
+          emp.turnos_fijos?.some(fs => fs.dia_semana === currentDayOfWeekName)
+      );
+
+      for (const emp of employeesWithFixedShiftToday) {
+          const state = employeeStates[emp.id_empleado.toString()];
+          const fixedShiftForDay = emp.turnos_fijos!.find(fs => fs.dia_semana === currentDayOfWeekName)!;
+          const fixedTiming = fixedShiftForDay.tipo_turno;
+
+          if (isHolidayDay && !emp.trabaja_feriados && fixedTiming !== 'Descanso') {
+              currentGeneratedShifts.push({ date: currentDateStrYYYYMMDD, employeeName: emp.nombre, serviceName: service.nombre_servicio, startTime: '', endTime: '', notes: 'F (Feriado)' });
+              state.consecutiveRestDays = isRestDay(state.lastShiftType) ? state.consecutiveRestDays + 1 : 1;
+              state.consecutiveWorkDays = 0;
+              state.lastShiftType = 'F';
+          } else if (fixedTiming === 'Descanso') {
+              currentGeneratedShifts.push({ date: currentDateStrYYYYMMDD, employeeName: emp.nombre, serviceName: service.nombre_servicio, startTime: '', endTime: '', notes: 'D (Fijo)' });
+              state.consecutiveRestDays = isRestDay(state.lastShiftType) ? state.consecutiveRestDays + 1 : 1;
+              state.consecutiveWorkDays = 0;
+              state.lastShiftType = 'D';
+          } else {
+              const shiftCode = fixedTiming.charAt(0).toUpperCase() as 'M' | 'T' | 'N';
+              if (!((shiftCode === 'N' && !service.habilitar_turno_noche) || !canAssignShiftDueToRest(state.lastActualWorkShiftEndTime, getShiftDateTime(currentDate, getShiftDetails(shiftCode).startTime), rulesConfig.minimumRestHoursBetweenShifts))) {
+                  const {startTime, endTime} = getShiftDetails(shiftCode);
+                  currentGeneratedShifts.push({ date: currentDateStrYYYYMMDD, employeeName: emp.nombre, serviceName: service.nombre_servicio, startTime, endTime, notes: `Turno Fijo` });
+                  dailyAssignedWorkShifts.add(emp.id_empleado.toString());
+                  state.shiftsThisMonth++;
+                  state.consecutiveWorkDays = isRestDay(state.lastShiftType) ? 1 : state.consecutiveWorkDays + 1;
+                  state.consecutiveRestDays = 0;
+                  state.lastShiftType = shiftCode;
+                  state.lastActualWorkShiftEndTime = getShiftDateTime(currentDate, endTime, shiftCode === 'N');
+                  if (shiftCode === 'M') staffingNeeds.morning = Math.max(0, staffingNeeds.morning - 1);
+                  else if (shiftCode === 'T') staffingNeeds.afternoon = Math.max(0, staffingNeeds.afternoon - 1);
+                  else if (shiftCode === 'N') staffingNeeds.night = Math.max(0, staffingNeeds.night - 1);
               }
           }
-      });
+          dailyProcessedEmployees.add(emp.id_empleado.toString());
+      }
 
-      const assignShiftsForType = (shiftType: 'M' | 'T' | 'N', getNeeded: () => number, decrementNeeded: () => void, notesDetail: string) => {
+      // 2. Asignar turnos para cubrir dotación usando solo empleados flexibles
+      const assignShiftsForType = (shiftType: 'M' | 'T' | 'N', getNeeded: () => number, decrementNeeded: () => void, notesDetail: string, flexibleEmployees: Employee[]) => {
         let needed = getNeeded(); 
         if (needed <= 0) return;
         const {startTime, endTime} = getShiftDetails(shiftType);
         const maxWorkDays = rulesConfig.maxConsecutiveWorkDays;
         const minRestDaysRequired = rulesConfig.minConsecutiveDaysOffRequiredBeforeWork;
         
-        const initialPool = employeesForService.filter(emp => !dailyProcessedEmployees.has(emp.id_empleado.toString()) && !dailyAssignedWorkShifts.has(emp.id_empleado.toString()));
-
-        const availableForWork = initialPool
+        const availableForWork = flexibleEmployees
           .filter(emp => { 
               const state = employeeStates[emp.id_empleado.toString()];
               const currentShiftStartTime = getShiftDateTime(currentDate, startTime);
@@ -185,7 +170,7 @@ export async function generateAlgorithmicSchedule(
               
               return canWork && hasEnoughMinRest && notExceedingMaxWork;
           })
-          .sort((a, b) => { 
+          .sort((a, b) => {
               const stateA = employeeStates[a.id_empleado.toString()]; const stateB = employeeStates[b.id_empleado.toString()];
               const aWasResting = isRestDay(stateA.lastShiftType);
               const bWasResting = isRestDay(stateB.lastShiftType);
@@ -232,19 +217,26 @@ export async function generateAlgorithmicSchedule(
           if (needed <= 0) break;
           const state = employeeStates[emp.id_empleado.toString()];
           currentGeneratedShifts.push({ date: currentDateStrYYYYMMDD, employeeName: emp.nombre, serviceName: service.nombre_servicio, startTime: startTime, endTime: endTime, notes: `${notesDetail}` });
-          dailyAssignedWorkShifts.add(emp.id_empleado.toString()); dailyProcessedEmployees.add(emp.id_empleado.toString()); state.shiftsThisMonth++;
-          const wasWorkingPreviously = state.lastShiftType === 'M' || state.lastShiftType === 'T' || state.lastShiftType === 'N';
-          state.consecutiveWorkDays = wasWorkingPreviously ? state.consecutiveWorkDays + 1 : 1;
+          dailyAssignedWorkShifts.add(emp.id_empleado.toString());
+          dailyProcessedEmployees.add(emp.id_empleado.toString());
+          state.shiftsThisMonth++;
+          state.consecutiveWorkDays = isRestDay(state.lastShiftType) ? 1 : state.consecutiveWorkDays + 1;
           state.consecutiveRestDays = 0; state.lastShiftType = shiftType;
           state.lastActualWorkShiftEndTime = getShiftDateTime(currentDate, endTime, shiftType === 'N');
-          decrementNeeded(); needed = getNeeded();
+          decrementNeeded();
+          needed = getNeeded();
         }
       };
 
-      assignShiftsForType('M', () => staffingNeeds.morning, () => staffingNeeds.morning = Math.max(0, staffingNeeds.morning - 1), "Turno Mañana");
-      assignShiftsForType('T', () => staffingNeeds.afternoon, () => staffingNeeds.afternoon = Math.max(0, staffingNeeds.afternoon - 1), "Turno Tarde");
-      if (service.habilitar_turno_noche) assignShiftsForType('N', () => staffingNeeds.night, () => staffingNeeds.night = Math.max(0, staffingNeeds.night - 1), "Turno Noche");
+      const flexibleEmployeesPool = employeesForService.filter(emp => !dailyProcessedEmployees.has(emp.id_empleado.toString()));
 
+      assignShiftsForType('M', () => staffingNeeds.morning, () => { staffingNeeds.morning = Math.max(0, staffingNeeds.morning - 1); }, "Turno Mañana", flexibleEmployeesPool);
+      assignShiftsForType('T', () => staffingNeeds.afternoon, () => { staffingNeeds.afternoon = Math.max(0, staffingNeeds.afternoon - 1); }, "Turno Tarde", flexibleEmployeesPool);
+      if (service.habilitar_turno_noche) {
+        assignShiftsForType('N', () => staffingNeeds.night, () => { staffingNeeds.night = Math.max(0, staffingNeeds.night - 1); }, "Turno Noche", flexibleEmployeesPool);
+      }
+
+      // 3. Asignar descanso a los empleados restantes (que serán todos flexibles)
       employeesForService.forEach(emp => {
         const state = employeeStates[emp.id_empleado.toString()];
         if (!dailyProcessedEmployees.has(emp.id_empleado.toString())) { 
