@@ -4,7 +4,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Brain, Users, BarChartHorizontalBig, LineChart, PieChartIcon, CheckCircle, ShieldCheck, HeartHandshake, BadgeCheck, CircleAlert, CircleHelp, CalendarDays, Info } from 'lucide-react';
-import type { EmployeeComparisonReportOutput, EmployeeReportMetrics, ScheduleQualityReportOutput, ScheduleViolation } from '@/lib/types';
+import type { EmployeeComparisonReportOutput, EmployeeReportMetrics, ScheduleQualityReportOutput, ScheduleViolation, ScheduleComparisonReportOutput } from '@/lib/types';
+import ScheduleComparisonDisplay from './ScheduleComparisonDisplay';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -15,14 +16,24 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
+import dynamic from 'next/dynamic';
+
+const DynamicChartContainer = dynamic(() => import('@/components/ui/chart').then(mod => mod.ChartContainer), {
+  ssr: false,
+  loading: () => <div className="h-[250px] w-full flex items-center justify-center"><p>Cargando gráfico...</p></div>,
+});
 
 interface ReportDisplayProps {
-  summary?: string | null;
   employeeComparisonOutput?: EmployeeComparisonReportOutput | null;
   scheduleQualityOutput?: ScheduleQualityReportOutput | null;
+  scheduleComparisonOutput?: ScheduleComparisonReportOutput | null;
 }
 
-export default function ReportDisplay({ summary, employeeComparisonOutput, scheduleQualityOutput }: ReportDisplayProps) {
+export default function ReportDisplay({ employeeComparisonOutput, scheduleQualityOutput, scheduleComparisonOutput }: ReportDisplayProps) {
+  if (scheduleComparisonOutput) {
+    return <ScheduleComparisonDisplay data={scheduleComparisonOutput} />;
+  }
+
   if (scheduleQualityOutput) {
     const { serviceName, dateLabel, score, violations, scoreBreakdown } = scheduleQualityOutput;
     const scoreValue = score ?? 0;
@@ -220,7 +231,7 @@ export default function ReportDisplay({ summary, employeeComparisonOutput, sched
                   <BarChartHorizontalBig className="mr-2 h-5 w-5 text-muted-foreground" />
                   Total Días Trabajados por Empleado
                 </h3>
-                <ChartContainer config={workDaysChartConfig} className="min-h-[250px] w-full">
+                <DynamicChartContainer config={workDaysChartConfig} className="min-h-[250px] w-full">
                   <BarChart 
                     accessibilityLayer 
                     data={data} 
@@ -247,7 +258,7 @@ export default function ReportDisplay({ summary, employeeComparisonOutput, sched
                     />
                     <Bar dataKey="workDays" layout="vertical" radius={4} fill="var(--color-workDays)" />
                   </BarChart>
-                </ChartContainer>
+                </DynamicChartContainer>
               </div>
 
               <Separator />
@@ -257,7 +268,7 @@ export default function ReportDisplay({ summary, employeeComparisonOutput, sched
                   <PieChartIcon className="mr-2 h-5 w-5 text-muted-foreground" />
                   Distribución de Tipos de Turno (M, T, N)
                 </h3>
-                <ChartContainer config={shiftTypesChartConfig} className="min-h-[250px] w-full">
+                <DynamicChartContainer config={shiftTypesChartConfig} className="min-h-[250px] w-full">
                   <BarChart 
                     accessibilityLayer 
                     data={data} 
@@ -288,7 +299,7 @@ export default function ReportDisplay({ summary, employeeComparisonOutput, sched
                     <Bar dataKey="shiftsT" name="Tarde" stackId="shifts" fill="var(--color-shiftsT)" radius={3}/>
                     <Bar dataKey="shiftsN" name="Noche" stackId="shifts" fill="var(--color-shiftsN)" radius={3}/>
                   </BarChart>
-                </ChartContainer>
+                </DynamicChartContainer>
               </div>
               
               <Separator />
@@ -297,7 +308,7 @@ export default function ReportDisplay({ summary, employeeComparisonOutput, sched
                   <PieChartIcon className="mr-2 h-5 w-5 text-muted-foreground" />
                   Distribución de Días No Trabajados
                 </h3>
-                <ChartContainer config={leaveTypesChartConfig} className="min-h-[250px] w-full">
+                <DynamicChartContainer config={leaveTypesChartConfig} className="min-h-[250px] w-full">
                   <BarChart 
                     accessibilityLayer 
                     data={data} 
@@ -330,7 +341,7 @@ export default function ReportDisplay({ summary, employeeComparisonOutput, sched
                     <Bar dataKey="compOffDays" name="Franco Comp. (C)" stackId="leaves" fill="var(--color-compOffDays)" radius={3}/>
                     <Bar dataKey="holidaysOff" name="Feriado Libre (F)" stackId="leaves" fill="var(--color-holidaysOff)" radius={3}/>
                   </BarChart>
-                </ChartContainer>
+                </DynamicChartContainer>
               </div>
 
               <Separator />
@@ -339,7 +350,7 @@ export default function ReportDisplay({ summary, employeeComparisonOutput, sched
                   <CalendarDays className="mr-2 h-5 w-5 text-muted-foreground" />
                   Distribución de Días Especiales (FDS y Feriados)
                 </h3>
-                <ChartContainer config={specialDaysChartConfig} className="min-h-[250px] w-full">
+                <DynamicChartContainer config={specialDaysChartConfig} className="min-h-[250px] w-full">
                   <BarChart 
                     accessibilityLayer 
                     data={data} 
@@ -370,7 +381,7 @@ export default function ReportDisplay({ summary, employeeComparisonOutput, sched
                     <Bar dataKey="holidayWorkDays" name="Feriado Trabajado" stackId="specialDays" fill="var(--color-feriadoTrabajado)" radius={3}/>
                     <Bar dataKey="weekendRestDays" name="FDS Descansado" stackId="specialDays" fill="var(--color-fdsDescansado)" radius={3}/>
                   </BarChart>
-                </ChartContainer>
+                </DynamicChartContainer>
               </div>
 
 
@@ -435,29 +446,5 @@ export default function ReportDisplay({ summary, employeeComparisonOutput, sched
     );
   }
 
-  if (summary) {
-    const formattedSummary = summary.split('\n').map((paragraph, index) => (
-      <p key={index} className="mb-2 last:mb-0">{paragraph}</p>
-    ));
-    return (
-      <Card className="h-full">
-        <CardHeader>
-          <CardTitle className="font-headline flex items-center">
-             <Brain className="mr-2 h-6 w-6 text-primary" />
-            Resumen del Informe con IA
-          </CardTitle>
-          <CardDescription>Este resumen fue generado por IA basándose en el texto del informe proporcionado.</CardDescription>
-        </CardHeader>
-        <CardContent className="prose prose-sm dark:prose-invert max-w-none">
-          <div className="text-foreground text-base leading-relaxed">
-            {formattedSummary}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return null;
 }
-
-    

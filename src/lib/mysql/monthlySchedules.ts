@@ -1,17 +1,5 @@
-import mysql from 'mysql2/promise';
+import { getConnection } from './config';
 import type { MonthlySchedule, AIShift, ScheduleViolation, ScoreBreakdown } from '@/lib/types';
-
-const dbConfig = {
-  host: process.env.MYSQL_HOST || 'localhost',
-  user: process.env.MYSQL_USER || 'your_user',
-  password: process.env.MYSQL_PASSWORD || 'your_password',
-  database: process.env.MYSQL_DATABASE || 'your_database',
-  timezone: 'UTC'
-};
-
-async function getConnection() {
-  return await mysql.createConnection(dbConfig);
-}
 
 // Nota: Las funciones para obtener, crear, actualizar y eliminar horarios mensuales
 // se vuelven más complejas debido a la estructura de tablas normalizada.
@@ -71,10 +59,25 @@ export async function getMonthlySchedules(
             }
 
             const [shifts] = await connection.execute(shiftsQuery, shiftsParams);
-            const [violations] = await connection.execute(
-                'SELECT p.*, e.nombre as employeeName FROM `problemashorarios` p LEFT JOIN `empleados` e ON p.employeeId = e.id_empleado WHERE p.`monthlyScheduleId` = ?',
+            const [violationRows] = await connection.execute(
+                'SELECT p.message, p.date, e.nombre as employeeName FROM `problemashorarios` p LEFT JOIN `empleados` e ON p.employeeId = e.id_empleado WHERE p.`monthlyScheduleId` = ?',
                 [scheduleId]
             );
+
+            const violations = (violationRows as any[]).map(row => {
+                try {
+                    // Intenta parsear el mensaje como JSON
+                    const parsed = JSON.parse(row.message);
+                    // Si el parseo es exitoso y es un objeto, combínalo con los datos de la fila
+                    if (typeof parsed === 'object' && parsed !== null) {
+                        return { ...parsed, date: row.date, employeeName: row.employeeName || parsed.employeeName };
+                    }
+                } catch (e) {
+                    // Si falla el parseo, es un mensaje de texto plano antiguo
+                }
+                // Devuelve el formato antiguo compatible
+                return { details: row.message, date: row.date, employeeName: row.employeeName, rule: 'Incidencia General', severity: 'warning', category: 'serviceRule', shiftType: 'General' };
+            });
             const [scoreBreakdown] = await connection.execute('SELECT * FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
 
             
@@ -132,13 +135,23 @@ export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'
 
         if (violations && violations.length > 0) {
             const violationValues = violations.map(v => {
-                // Intenta encontrar el empleado por el nombre en el mensaje de la violación
-                const employeeNameMatch = v.details ? v.details.match(/^(.*?)\s+tuvo/) : null;
-                const employeeName = employeeNameMatch ? employeeNameMatch[1] : v.employeeName;
-                const employee = employeeName ? allEmployees.find((e: any) => e.nombre === employeeName) : null;
-                return [scheduleId, employee ? employee.id_empleado : v.employeeId, v.date, v.details];
+                const employee = v.employeeName ? allEmployees.find((e: any) => e.nombre === v.employeeName) : null;
+                // Guarda el objeto de violación completo como un string JSON en la columna 'message'
+                const message = JSON.stringify({
+                    rule: v.rule,
+                    details: v.details,
+                    severity: v.severity,
+                    category: v.category,
+                    shiftType: v.shiftType,
+                    // Incluye employeeName en el JSON por si el JOIN falla al recuperar
+                    employeeName: v.employeeName 
+                });
+                return [scheduleId, employee ? employee.id_empleado : null, v.date, message];
             });
-            await connection.query('INSERT INTO `problemashorarios` (monthlyScheduleId, employeeId, date, message) VALUES ?', [violationValues]);
+            await connection.query(
+                'INSERT INTO `problemashorarios` (monthlyScheduleId, employeeId, date, message) VALUES ?',
+                [violationValues]
+            );
         }
 
         if (scoreBreakdown) {
@@ -215,12 +228,21 @@ export async function updateMonthlySchedule(schedule: MonthlySchedule): Promise<
 
         if (schedule.violations && schedule.violations.length > 0) {
             const violationValues = schedule.violations.map(v => {
-                const employeeNameMatch = v.details ? v.details.match(/^(.*?)\s+tuvo/) : null;
-                const employeeName = employeeNameMatch ? employeeNameMatch[1] : v.employeeName;
-                const employee = employeeName ? allEmployees.find((e: any) => e.nombre === employeeName) : null;
-                return [scheduleId, employee ? employee.id_empleado : v.employeeId, v.date, v.details];
+                const employee = v.employeeName ? allEmployees.find((e: any) => e.nombre === v.employeeName) : null;
+                const message = JSON.stringify({
+                    rule: v.rule,
+                    details: v.details,
+                    severity: v.severity,
+                    category: v.category,
+                    shiftType: v.shiftType,
+                    employeeName: v.employeeName
+                });
+                return [scheduleId, employee ? employee.id_empleado : null, v.date, message];
             });
-            await connection.query('INSERT INTO `problemashorarios` (monthlyScheduleId, employeeId, date, message) VALUES ?', [violationValues]);
+            await connection.query(
+                'INSERT INTO `problemashorarios` (monthlyScheduleId, employeeId, date, message) VALUES ?',
+                [violationValues]
+            );
         }
 
         if (schedule.scoreBreakdown) {
@@ -283,10 +305,21 @@ export async function getSchedulesInDateRange(
                 'SELECT hd.*, e.nombre as employeeName, s.nombre_servicio as serviceName FROM `horario_detalles` hd JOIN `empleados` e ON hd.employeeId = e.id_empleado JOIN `servicios` s ON hd.serviceId = s.id_servicio WHERE hd.`horario_id` = ?',
                 [scheduleId]
             );
-            const [violations] = await connection.execute(
-                'SELECT p.*, e.nombre as employeeName FROM `problemashorarios` p LEFT JOIN `empleados` e ON p.employeeId = e.id_empleado WHERE p.`monthlyScheduleId` = ?',
+            const [violationRows] = await connection.execute(
+                'SELECT p.message, p.date, e.nombre as employeeName FROM `problemashorarios` p LEFT JOIN `empleados` e ON p.employeeId = e.id_empleado WHERE p.`monthlyScheduleId` = ?',
                 [scheduleId]
             );
+            const violations = (violationRows as any[]).map(row => {
+                try {
+                    const parsed = JSON.parse(row.message);
+                    if (typeof parsed === 'object' && parsed !== null) {
+                        return { ...parsed, date: row.date, employeeName: row.employeeName || parsed.employeeName };
+                    }
+                } catch (e) {
+                    // Fallback for old plain text messages
+                }
+                return { details: row.message, date: row.date, employeeName: row.employeeName, rule: 'Incidencia General', severity: 'warning', category: 'serviceRule', shiftType: 'General' };
+            });
             const [scoreBreakdown] = await connection.execute('SELECT * FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
 
             schedules.push({

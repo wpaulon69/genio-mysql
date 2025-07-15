@@ -145,10 +145,46 @@ export default function InteractiveScheduleGrid({
     }
   };
 
-  const handleSave = (status: 'published' | 'draft') => {
-    if (onSave) onSave(editableShifts, status, evaluationResult);
-    setHasUnsavedChanges(false);
-    setIsSaveModalOpen(false);
+  const handleSave = async (status: 'published' | 'draft') => {
+    if (!onSave) return;
+
+    setIsEvaluating(true);
+    let currentEvaluationResult = evaluationResult;
+
+    try {
+      // Forzar re-evaluación antes de guardar
+      const prevMonthDate = new Date(parseInt(year), parseInt(month, 10) - 2, 1);
+      const prevMonth = prevMonthDate.getMonth() + 1;
+      const prevYear = prevMonthDate.getFullYear();
+
+      const prevMonthShiftsResponse = await fetch(`/api/monthlySchedules?year=${prevYear}&month=${prevMonth}&serviceId=${targetService?.id_servicio}`);
+      let previousMonthShifts = null;
+      if (prevMonthShiftsResponse.ok) {
+        const prevSchedules = await prevMonthShiftsResponse.json();
+        if (prevSchedules.length > 0) previousMonthShifts = prevSchedules[0].shifts;
+      }
+
+      const response = await fetch('/api/evaluate-schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shifts: editableShifts, service: targetService, month, year, employees: allEmployees, holidays, previousMonthShifts }),
+      });
+
+      if (response.ok) {
+        currentEvaluationResult = await response.json();
+        setEvaluationResult(currentEvaluationResult);
+        if (onEvaluationComplete) onEvaluationComplete(currentEvaluationResult);
+      } else {
+        console.error("No se pudo re-evaluar antes de guardar, se guardará sin evaluación actualizada.");
+      }
+    } catch (error) {
+      console.error("Error en la re-evaluación automática:", error);
+    } finally {
+      setIsEvaluating(false);
+      onSave(editableShifts, status, currentEvaluationResult);
+      setHasUnsavedChanges(false);
+      setIsSaveModalOpen(false);
+    }
   };
 
   const dayHeaders = useMemo(() => {

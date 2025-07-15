@@ -172,3 +172,20 @@ export interface ScheduleQualityReportOutput {
   violations: ScheduleViolation[] | null | undefined;
   scoreBreakdown: ScoreBreakdown | null | undefined;
 }
+
+export interface ScheduleComparisonMetric {
+  month: string; // e.g., "Julio 2025"
+  score: number | null | undefined;
+  totalViolations: number;
+  errorViolations: number;
+  warningViolations: number;
+  workDays: number;
+  restDays: number;
+}
+
+export interface ScheduleComparisonReportOutput {
+  reportType: 'scheduleComparison';
+  data: ScheduleComparisonMetric[];
+  dateRangeLabel: string;
+  serviceNameLabel: string;
+}

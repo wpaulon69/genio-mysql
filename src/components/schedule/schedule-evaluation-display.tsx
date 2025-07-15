@@ -123,7 +123,7 @@ export default function ScheduleEvaluationDisplay({ score, violations, scoreBrea
                                 }
                                 <p className="text-xs opacity-90 mt-1">
                                   {v.employeeName && <><strong>Empleado:</strong> {v.employeeName} </>}
-                                  {v.date && <><strong>Fecha:</strong> {v.date} </>}
+                                  {v.date ? <><strong>Fecha:</strong> {v.date} </> : <><strong>Fecha:</strong> Todo el mes </>}
                                   {v.shiftType && v.shiftType !== 'General' && <><strong>Turno:</strong> {v.shiftType} </>}
                                 </p>
                                 <p className="text-sm mt-1.5">{v.details}</p>
@@ -138,12 +138,12 @@ export default function ScheduleEvaluationDisplay({ score, violations, scoreBrea
               </CardContent>
             </Card>
           ) : (
-            (scoreToDisplay !== null && scoreToDisplay !== undefined) && ( 
-                <Alert variant="default" className="mt-2">
+            (scoreToDisplay !== null && scoreToDisplay !== undefined && scoreToDisplay >= 100) && (
+              <Alert variant="default" className="mt-2">
                 <BadgeCheck className="h-4 w-4"/>
                 <AlertTitle>¡Excelente!</AlertTitle>
                 <AlertDescription>No se encontraron incumplimientos de reglas o preferencias en este horario.</AlertDescription>
-                </Alert>
+              </Alert>
             )
           )}
          {scoreToDisplay === null && scoreToDisplay === undefined && (!violationsToDisplay || violationsToDisplay.length === 0) && !breakdownToDisplay && context === 'generator' && (

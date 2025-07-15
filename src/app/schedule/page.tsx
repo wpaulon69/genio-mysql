@@ -209,47 +209,6 @@ export default function SchedulePage() {
     saveScheduleMutation.mutate({ shifts, status, evaluation });
   };
 
-  const createDraftFromPublishedMutation = useMutation({
-    mutationFn: async (schedule: MonthlySchedule) => {
-      const newDraftData = {
-        ...schedule,
-        status: 'draft',
-        horario_nombre: `(Copia) ${schedule.horario_nombre || `Horario ID: ${schedule.id}`}`,
-        version: 1,
-        // Quitar el id para que se cree un nuevo registro
-        id: undefined,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const response = await fetch('/api/monthlySchedules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newDraftData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al crear el borrador.');
-      }
-      // La respuesta de POST debería incluir el nuevo horario completo o al menos su ID
-      // Asumimos que devuelve el objeto completo para poder editarlo
-      return response.json();
-    },
-    onSuccess: (newlyCreatedSchedule) => {
-      toast({ title: "Borrador Creado", description: "Se ha creado una copia editable del horario publicado." });
-      queryClient.invalidateQueries({ queryKey: ['allMonthlySchedules', selectedYearView, selectedMonthView, selectedServiceIdView] });
-      // Necesitamos el horario completo para editarlo, si la API solo devuelve el ID, habría que buscarlo.
-      // Por ahora, asumimos que la API podría devolver el objeto o que podemos construirlo.
-      // Lo ideal es que la API devuelva el nuevo objeto. Asumiendo que lo hace:
-      setScheduleInEdit(newlyCreatedSchedule);
-      setActiveTab("generate-shifts");
-    },
-    onError: (error: Error) => {
-      toast({ variant: "destructive", title: "Error al Crear Borrador", description: error.message });
-    },
-  });
-
   if (isLoading) {
     return (
       <div className="container mx-auto flex justify-center items-center h-screen">
@@ -449,15 +408,16 @@ export default function SchedulePage() {
                        </Button>
                      )}
                      {selectedScheduleToDisplay.status === 'published' && (
-                      <>
+                       <>
                          <Button
                            variant="outline"
-                           onClick={() => createDraftFromPublishedMutation.mutate(selectedScheduleToDisplay)}
-                           disabled={createDraftFromPublishedMutation.isPending}
+                           onClick={() => {
+                             setScheduleInEdit(selectedScheduleToDisplay);
+                             setActiveTab("generate-shifts");
+                           }}
                            className="w-full md:w-auto"
                          >
-                           {createDraftFromPublishedMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Pencil className="mr-2 h-4 w-4" />}
-                           Crear Borrador para Editar
+                           <Pencil className="mr-2 h-4 w-4" /> Editar Horario
                          </Button>
                          <Button
                            variant="destructive"

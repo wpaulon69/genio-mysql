@@ -198,17 +198,17 @@ export async function evaluateScheduleMetrics(
 
         if (dailyStaffing.M < staffingNeedsConfig.morning) {
             const diff = staffingNeedsConfig.morning - dailyStaffing.M;
-            evalCtx.violations.push({ date: currentDateStrYYYYMMDD, shiftType: 'M', rule: "Falta de Personal", details: `Faltan ${diff} empleado(s) para Mañana.`, severity: 'error', category: 'serviceRule' });
+            evalCtx.violations.push({ employeeName: "Nivel de Servicio", date: currentDateStrYYYYMMDD, shiftType: 'M', rule: "Falta de Personal", details: `Faltan ${diff} empleado(s) para Mañana.`, severity: 'error', category: 'serviceRule' });
             evalCtx.score -= diff * rulesConfig.scorePenalties.staffingShortagePerEmployee; evalCtx.scoreBreakdown.serviceRules -= diff * rulesConfig.scorePenalties.staffingShortagePerEmployee;
         }
         if (dailyStaffing.T < staffingNeedsConfig.afternoon) {
             const diff = staffingNeedsConfig.afternoon - dailyStaffing.T;
-            evalCtx.violations.push({ date: currentDateStrYYYYMMDD, shiftType: 'T', rule: "Falta de Personal", details: `Faltan ${diff} empleado(s) para Tarde.`, severity: 'error', category: 'serviceRule' });
+            evalCtx.violations.push({ employeeName: "Nivel de Servicio", date: currentDateStrYYYYMMDD, shiftType: 'T', rule: "Falta de Personal", details: `Faltan ${diff} empleado(s) para Tarde.`, severity: 'error', category: 'serviceRule' });
             evalCtx.score -= diff * rulesConfig.scorePenalties.staffingShortagePerEmployee; evalCtx.scoreBreakdown.serviceRules -= diff * rulesConfig.scorePenalties.staffingShortagePerEmployee;
         }
         if (service.habilitar_turno_noche && dailyStaffing.N < staffingNeedsConfig.night) {
             const diff = staffingNeedsConfig.night - dailyStaffing.N;
-            evalCtx.violations.push({ date: currentDateStrYYYYMMDD, shiftType: 'N', rule: "Falta de Personal", details: `Faltan ${diff} empleado(s) para Noche.`, severity: 'error', category: 'serviceRule' });
+            evalCtx.violations.push({ employeeName: "Nivel de Servicio", date: currentDateStrYYYYMMDD, shiftType: 'N', rule: "Falta de Personal", details: `Faltan ${diff} empleado(s) para Noche.`, severity: 'error', category: 'serviceRule' });
             evalCtx.score -= diff * rulesConfig.scorePenalties.staffingShortagePerEmployee; evalCtx.scoreBreakdown.serviceRules -= diff * rulesConfig.scorePenalties.staffingShortagePerEmployee;
         }
     }

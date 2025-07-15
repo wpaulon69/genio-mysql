@@ -91,16 +91,25 @@ TableBody.displayName = "TableBody"
 const TableFooter = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, ...props }, ref) => (
-  <tfoot
-    ref={ref}
-    className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, children, ...props }, ref) => {
+  // Filter out non-element children to prevent hydration errors.
+  const validChildren = React.Children.toArray(children).filter(child =>
+    React.isValidElement(child)
+  );
+
+  return (
+    <tfoot
+      ref={ref}
+      className={cn(
+        "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+        className
+      )}
+      {...props}
+    >
+      {validChildren}
+    </tfoot>
+  );
+});
 TableFooter.displayName = "TableFooter"
 
 /**

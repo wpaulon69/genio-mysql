@@ -25,7 +25,7 @@ const reportMonths = Array.from({ length: 12 }, (_, i) => ({
 const ALL_SERVICES_VALUE = "__ALL_SERVICES_COMPARISON__";
 
 const reportFilterSchema = z.object({
-  reportType: z.enum(["shiftSummary", "employeeComparison", "scheduleQuality"]),
+  reportType: z.enum(["employeeComparison", "scheduleQuality", "scheduleComparison"]),
   reportText: z.string().optional(),
   monthFrom: z.string().optional(),
   yearFrom: z.string().optional(),
@@ -36,15 +36,6 @@ const reportFilterSchema = z.object({
   serviceIdForScheduleQuality: z.string().optional(),
   monthForScheduleQuality: z.string().optional(),
   yearForScheduleQuality: z.string().optional(),
-})
-.refine(data => {
-  if (data.reportType === 'shiftSummary' && (!data.reportText || data.reportText.trim().length < 20)) {
-    return false;
-  }
-  return true;
-}, {
-  message: "El texto para resumir debe tener al menos 20 caracteres.",
-  path: ["reportText"],
 })
 .superRefine((data, ctx) => {
   if (data.reportType === 'employeeComparison') {
@@ -80,22 +71,13 @@ export default function ReportFilters({ onGenerateReport, isLoading, services }:
   const form = useForm<ReportFilterFormData>({
     resolver: zodResolver(reportFilterSchema),
     defaultValues: {
-      reportType: 'shiftSummary',
-      reportText: `Ejemplo de Informe de Turno para la Semana del 15 de Julio:
-Servicio de Emergencias:
-- Dr. Smith trabajó 40 horas, cubrió 3 turnos de noche. La carga de pacientes fue alta el lunes.
-- Enfermera Johnson trabajó 36 horas, mayormente turnos de día. Reportó mal funcionamiento de equipo el martes.
-- Enfermera Lee trabajó 24 horas, tomó el miércoles libre como solicitó.
-Servicio de Cardiología:
-- Dra. Alice cubrió todas las consultas de cardiología, 45 horas en total.
-- Técnico Brown asistió en 15 procedimientos, trabajó 32 horas.
-General: Los niveles de personal fueron adecuados pero se incurrió en algunas horas extras en Emergencias. El informe de equipo de la Enfermera Johnson necesita seguimiento. Considere la capacitación cruzada del Técnico Brown para tareas básicas de ER.`,
+      reportType: 'employeeComparison',
       monthFrom: (new Date().getMonth()).toString(),
       yearFrom: new Date().getFullYear().toString(),
       monthTo: (new Date().getMonth() + 1).toString(),
       yearTo: new Date().getFullYear().toString(),
       serviceIdForComparison: ALL_SERVICES_VALUE,
-      serviceIdForScheduleQuality: services.length > 0 ? services[0].id : '',
+      serviceIdForScheduleQuality: services.length > 0 ? services[0].id_servicio.toString() : '',
       monthForScheduleQuality: (new Date().getMonth() + 1).toString(),
       yearForScheduleQuality: new Date().getFullYear().toString(),
     },
@@ -129,9 +111,9 @@ General: Los niveles de personal fueron adecuados pero se incurrió en algunas h
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="shiftSummary">Resumen de Informe de Turno con IA</SelectItem>
                       <SelectItem value="employeeComparison">Análisis Comparativo de Empleados</SelectItem>
                       <SelectItem value="scheduleQuality">Análisis de Calidad de Horario</SelectItem>
+                      <SelectItem value="scheduleComparison">Informe Comparativo de Horarios</SelectItem>
                       {/* <SelectItem value="employeeUtilization" disabled>Utilización de Empleados (próximamente)</SelectItem> */}
                       {/* <SelectItem value="serviceUtilization" disabled>Utilización de Servicios (próximamente)</SelectItem> */}
                     </SelectContent>
@@ -140,26 +122,6 @@ General: Los niveles de personal fueron adecuados pero se incurrió en algunas h
                 </FormItem>
               )}
             />
-
-            {reportType === 'shiftSummary' && (
-              <FormField
-                control={form.control}
-                name="reportText"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Texto a Resumir</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Pegue o escriba el texto del informe de turno aquí para el resumen con IA..."
-                        rows={10}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             {reportType === 'employeeComparison' && (
               <>
@@ -205,7 +167,7 @@ General: Los niveles de personal fueron adecuados pero se incurrió en algunas h
                         <FormControl><SelectTrigger><SelectValue placeholder="Todos los Servicios" /></SelectTrigger></FormControl>
                         <SelectContent>
                           <SelectItem value={ALL_SERVICES_VALUE}>Todos los Servicios</SelectItem>
-                          {services.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                          {services.map(s => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()}>{s.nombre_servicio}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </FormItem>
@@ -220,7 +182,7 @@ General: Los niveles de personal fueron adecuados pero se incurrió en algunas h
                   <FormItem> <FormLabel>Servicio</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar Servicio" /></SelectTrigger></FormControl>
-                      <SelectContent>{services.map(s => (<SelectItem key={`sq-${s.id}`} value={s.id}>{s.name}</SelectItem>))}</SelectContent>
+                      <SelectContent>{services.map(s => (<SelectItem key={`sq-${s.id_servicio}`} value={s.id_servicio.toString()}>{s.nombre_servicio}</SelectItem>))}</SelectContent>
                     </Select><FormMessage />
                   </FormItem>)} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -236,6 +198,50 @@ General: Los niveles de personal fueron adecuados pero se incurrió en algunas h
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Año" /></SelectTrigger></FormControl>
                         <SelectContent>{reportYears.map(y => (<SelectItem key={`sq-${y}`} value={y}>{y}</SelectItem>))}</SelectContent>
+                      </Select><FormMessage />
+                    </FormItem>)} />
+                </div>
+              </>
+            )}
+
+            {reportType === 'scheduleComparison' && (
+              <>
+                <FormField control={form.control} name="serviceIdForComparison" render={({ field }) => (
+                  <FormItem> <FormLabel>Servicio</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Seleccionar Servicio" /></SelectTrigger></FormControl>
+                      <SelectContent>{services.map(s => (<SelectItem key={`sc-${s.id_servicio}`} value={s.id_servicio.toString()}>{s.nombre_servicio}</SelectItem>))}</SelectContent>
+                    </Select><FormMessage />
+                  </FormItem>)} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="monthFrom" render={({ field }) => (
+                    <FormItem> <FormLabel>Mes Desde</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Mes Desde" /></SelectTrigger></FormControl>
+                        <SelectContent>{reportMonths.map(m => (<SelectItem key={`sc-from-${m.value}`} value={m.value}>{m.label}</SelectItem>))}</SelectContent>
+                      </Select><FormMessage />
+                    </FormItem>)} />
+                  <FormField control={form.control} name="yearFrom" render={({ field }) => (
+                    <FormItem> <FormLabel>Año Desde</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Año Desde" /></SelectTrigger></FormControl>
+                        <SelectContent>{reportYears.map(y => (<SelectItem key={`sc-from-${y}`} value={y}>{y}</SelectItem>))}</SelectContent>
+                      </Select><FormMessage />
+                    </FormItem>)} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="monthTo" render={({ field }) => (
+                    <FormItem> <FormLabel>Mes Hasta</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Mes Hasta" /></SelectTrigger></FormControl>
+                        <SelectContent>{reportMonths.map(m => (<SelectItem key={`sc-to-${m.value}`} value={m.value}>{m.label}</SelectItem>))}</SelectContent>
+                      </Select><FormMessage />
+                    </FormItem>)} />
+                  <FormField control={form.control} name="yearTo" render={({ field }) => (
+                    <FormItem> <FormLabel>Año Hasta</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Año Hasta" /></SelectTrigger></FormControl>
+                        <SelectContent>{reportYears.map(y => (<SelectItem key={`sc-to-${y}`} value={y}>{y}</SelectItem>))}</SelectContent>
                       </Select><FormMessage />
                     </FormItem>)} />
                 </div>
