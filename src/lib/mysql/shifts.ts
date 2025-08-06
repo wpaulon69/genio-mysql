@@ -7,7 +7,7 @@ export async function getShifts(): Promise<AIShift[]> {
     const [rows] = await connection.execute('SELECT * FROM `horario_detalles`');
     return rows as AIShift[];
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -20,7 +20,7 @@ export async function createShift(shift: Omit<AIShift, 'id'>) {
     );
     return (result as any).insertId;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -33,7 +33,7 @@ export async function updateShift(id: number, shift: Omit<AIShift, 'id'>) {
     );
     return result;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -43,6 +43,6 @@ export async function deleteShift(id: number) {
     const [result] = await connection.execute('DELETE FROM `horario_detalles` WHERE id = ?', [id]);
     return result;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }

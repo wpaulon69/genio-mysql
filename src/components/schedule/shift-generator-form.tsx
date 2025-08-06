@@ -105,8 +105,6 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
       return;
     }
 
-    console.log("Selected Service:", JSON.stringify(selectedService, null, 2));
-
     const employeesForService = allEmployees.filter(emp => emp.id_servicio.toString() === selectedService.id_servicio.toString());
     
     setGenerationInfo({ service: selectedService, employees: employeesForService, rulesConfig: defaultScheduleRulesConfig });
@@ -127,7 +125,6 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
         null, // previousMonthSchedule.shifts
         defaultScheduleRulesConfig
       );
-      console.log("[ShiftGeneratorForm] Generation result:", result); // Log del resultado
       setGeneratedShifts(result.generatedShifts);
       setEvaluation({
         score: result.score,
@@ -138,7 +135,6 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
       toast({ title: "Generación Completa", description: `Horario generado con una puntuación de ${result.score.toFixed(0)}/100.` });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Error desconocido en la generación.";
-      console.error("[ShiftGeneratorForm] Error during generation:", e); // Log del error
       setError(message);
       toast({ variant: "destructive", title: "Error de Generación", description: message });
     } finally {
@@ -183,14 +179,10 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
   };
 
   const handleShiftsChange = (newShifts: AIShift[]) => {
-    console.log("handleShiftsChange called, newShifts:", newShifts);
     setGeneratedShifts(newShifts);
   };
 
-  console.log("[ShiftGeneratorForm] Rendering. showGrid:", showGrid, "generatedShifts:", !!generatedShifts, "selectedService:", !!selectedService);
-
   if (showGrid && generatedShifts && selectedService) {
-    console.log("[ShiftGeneratorForm] Rendering InteractiveScheduleGrid");
     return (
       <InteractiveScheduleGrid
         initialShifts={generatedShifts}
@@ -272,7 +264,6 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
           />
           <div className="mt-4 flex justify-end">
             <Button onClick={() => {
-              console.log("[ShiftGeneratorForm] Ver/Editar Grilla button clicked. Current state: showGrid:", showGrid, "generatedShifts:", !!generatedShifts, "selectedService:", !!selectedService);
               setShowGrid(true);
             }}>
               <Eye className="mr-2 h-4 w-4" />

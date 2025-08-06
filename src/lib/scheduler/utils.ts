@@ -3,86 +3,68 @@ import type { AIShift, AsignacionEmpleado } from '@/lib/types';
 
 export function getShiftType(shift: AIShift | null | undefined): 'M' | 'T' | 'N' | 'D' | 'LAO' | 'LM' | 'C' | 'F' | 'V' | '' {
   if (!shift) {
-    console.log("DEBUG: getShiftType received null/undefined shift, returning ''");
     return '';
   }
 
   const note = shift.notes?.toUpperCase();
-  console.log(`DEBUG: getShiftType processing shift: date=${shift.date}, employee=${shift.employeeName}, startTime=${shift.startTime}, notes=${shift.notes}`);
-  console.log(`DEBUG: Normalized note: ${note}`);
 
   // --- INICIO DE LA CORRECCIÓN ---
   // Si la nota es _EMPTY_, es un turno vacío intencional, no un error.
   if (note === '_EMPTY_') {
-    console.log(`DEBUG: getShiftType returning '' (intentionally empty) for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return '';
   }
   // --- FIN DE LA CORRECCIÓN ---
 
   // Tipos explícitos que no son de trabajo a partir de las notas (máxima prioridad)
   if (note === 'C' || note === 'C (FRANCO COMP.)' || note?.includes('FRANCO COMP')) {
-    console.log(`DEBUG: getShiftType returning 'C' for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'C';
   }
   if (note?.startsWith('F') || note?.includes('FERIADO')) {
-    console.log(`DEBUG: getShiftType returning 'F' for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'F';
   }
   if (note === 'D' || note === 'D (DESCANSO)' || note?.includes('DESCANSO') || note === 'D (FIJO SEMANAL)' || note === 'D (FDS OBJETIVO)' || note === 'D (FIJO)') {
-    console.log(`DEBUG: getShiftType returning 'D' for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'D';
   }
   if (note?.startsWith('LAO')) {
-    console.log(`DEBUG: getShiftType returning 'LAO' for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'LAO';
   }
   if (note?.startsWith('LM')) {
-    console.log(`DEBUG: getShiftType returning 'LM' for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'LM';
   }
   if (note?.startsWith('V')) {
-    console.log(`DEBUG: getShiftType returning 'V' for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'V';
   }
 
   // Turnos de trabajo basados en startTime (si las notas no especificaron un tipo de no trabajo)
   if (shift.startTime && shift.startTime.trim() !== '') {
     if (shift.startTime.startsWith('07:') || shift.startTime.startsWith('08:')) {
-      console.log(`DEBUG: getShiftType returning 'M' (from startTime) for shift: date=${shift.date}, employee=${shift.employeeName}`);
       return 'M';
     }
     if (shift.startTime.startsWith('14:') || shift.startTime.startsWith('15:')) {
-      console.log(`DEBUG: getShiftType returning 'T' (from startTime) for shift: date=${shift.date}, employee=${shift.employeeName}`);
       return 'T';
     }
     if (shift.startTime.startsWith('22:') || shift.startTime.startsWith('23:')) {
-      console.log(`DEBUG: getShiftType returning 'N' (from startTime) for shift: date=${shift.date}, employee=${shift.employeeName}`);
       return 'N';
     }
   }
   
   // Turnos de trabajo basados en las notas (si startTime no coincidió o si startTime estaba vacío pero las notas indican M, T, N)
   if (note?.includes('MAÑANA') || note?.includes('(M)')) {
-    console.log(`DEBUG: getShiftType returning 'M' (from notes) for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'M';
   }
   if (note?.includes('TARDE') || note?.includes('(T)')) {
-    console.log(`DEBUG: getShiftType returning 'T' (from notes) for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'T';
   }
   if (note?.includes('NOCHE') || note?.includes('(N)')) {
-    console.log(`DEBUG: getShiftType returning 'N' (from notes) for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'N';
   }
   
   // Fallback: Si startTime está vacío Y las notas también están vacías o no son indicativas de ningún tipo conocido,
   // entonces considéralo un día de descanso ('D').
   if ((!shift.startTime || shift.startTime.trim() === '') && (!note || note.trim() === '')) {
-    console.log(`DEBUG: getShiftType returning 'D' (fallback) for shift: date=${shift.date}, employee=${shift.employeeName}`);
     return 'D';
   }
   
-  console.log(`DEBUG: getShiftType returning '' (unhandled fallback) for shift: date=${shift.date}, employee=${shift.employeeName}`);
   return ''; // Fallback para cualquier otro caso no manejado
 }
 

@@ -2,7 +2,7 @@ import {
   getMonthlySchedules,
   createMonthlySchedule,
   updateMonthlySchedule,
-  // deleteMonthlySchedule,
+  deleteMonthlySchedule,
 } from '@/lib/mysql/monthlySchedules';
 import { NextResponse } from 'next/server';
 
@@ -41,5 +41,27 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error('Error in PUT /api/monthlySchedules:', error);
     return NextResponse.json({ message: 'Error updating schedule' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const scheduleId = searchParams.get('scheduleId');
+    const password = searchParams.get('password');
+
+    if (password !== 'dev-delete') {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!scheduleId) {
+      return NextResponse.json({ message: 'scheduleId is required' }, { status: 400 });
+    }
+
+    await deleteMonthlySchedule(scheduleId);
+    return NextResponse.json({ message: 'Schedule deleted successfully' });
+  } catch (error) {
+    console.error('Error in DELETE /api/monthlySchedules:', error);
+    return NextResponse.json({ message: 'Error deleting schedule' }, { status: 500 });
   }
 }

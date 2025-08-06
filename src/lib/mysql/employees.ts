@@ -25,7 +25,7 @@ export async function getEmployees(): Promise<Employee[]> {
     }
     return employees;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -67,7 +67,7 @@ export async function createEmployee(employee: Omit<Employee, 'id_empleado'>): P
     console.error("Error creating employee:", error);
     throw error;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -109,7 +109,7 @@ export async function updateEmployee(id: number, employee: Omit<Employee, 'id_em
         console.error("Error updating employee:", error);
         throw error;
     } finally {
-        await connection.end();
+        connection.release();
     }
 }
 
@@ -129,6 +129,6 @@ export async function deleteEmployee(id: number): Promise<void> {
         console.error("Error deleting employee:", error);
         throw error;
     } finally {
-        await connection.end();
+        connection.release();
     }
 }

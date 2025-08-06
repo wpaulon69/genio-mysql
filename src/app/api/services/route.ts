@@ -9,7 +9,6 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     const services = await getServices();
-    console.log("Services from getServices:", services);
     return NextResponse.json(services);
   } catch (error) {
     console.error('Error in GET /api/services:', error);
@@ -20,7 +19,6 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log("API POST /api/services - body received:", body);
     const newServiceId = await createService(body);
     return NextResponse.json({ id: newServiceId }, { status: 201 });
   } catch (error) {

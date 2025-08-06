@@ -7,7 +7,7 @@ export async function getServices(): Promise<Service[]> {
     const [rows] = await connection.execute('SELECT * FROM servicios');
     return rows as Service[];
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -34,7 +34,7 @@ export async function createService(service: Omit<Service, 'id_servicio'>): Prom
     );
     return (result as any).insertId;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -61,7 +61,7 @@ export async function updateService(id: number, service: Omit<Service, 'id_servi
       ]
     );
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -70,6 +70,6 @@ export async function deleteService(id: number): Promise<void> {
   try {
     await connection.execute('DELETE FROM servicios WHERE id_servicio = ?', [id]);
   } finally {
-    await connection.end();
+    connection.release();
   }
 }

@@ -177,6 +177,10 @@ export default function SchedulePage() {
         score: evaluation?.score || 0,
         violations: evaluation?.violations || [],
         scoreBreakdown: evaluation?.scoreBreakdown || {},
+        scheduleKey: `${selectedYearView}-${selectedMonthView}-${selectedServiceForView.id_servicio}`,
+        serviceName: selectedServiceForView.nombre_servicio,
+        createdAt: scheduleInEdit?.createdAt || Date.now(),
+        updatedAt: Date.now(),
       };
 
       const method = scheduleData.id ? 'PUT' : 'POST';

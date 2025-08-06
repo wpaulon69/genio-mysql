@@ -7,7 +7,7 @@ export async function getHolidays(): Promise<Holiday[]> {
     const [rows] = await connection.execute('SELECT id, DATE_FORMAT(date, "%Y-%m-%d") as date, name FROM holidays');
     return rows as Holiday[];
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -20,7 +20,7 @@ export async function createHoliday(holiday: Omit<Holiday, 'id'>): Promise<numbe
     );
     return (result as any).insertId;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -32,7 +32,7 @@ export async function updateHoliday(id: number, holiday: Omit<Holiday, 'id'>): P
       [holiday.date, holiday.name, id]
     );
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -41,6 +41,6 @@ export async function deleteHoliday(id: number): Promise<void> {
   try {
     await connection.execute('DELETE FROM holidays WHERE id = ?', [id]);
   } finally {
-    await connection.end();
+    connection.release();
   }
 }

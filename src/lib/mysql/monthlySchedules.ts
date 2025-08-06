@@ -13,6 +13,9 @@ export async function getMonthlySchedules(
   status?: string
 ): Promise<MonthlySchedule[]> {
     const connection = await getConnection();
+    if (!connection) {
+        throw new Error('Failed to get database connection from pool.');
+    }
     try {
         let query = 'SELECT * FROM horarios';
         const params: (string | number)[] = [];
@@ -39,11 +42,12 @@ export async function getMonthlySchedules(
             query += conditions.join(' AND ');
         }
 
-        const [scheduleRows] = await connection.execute(query, params);
+        const scheduleResult = await connection.execute(query, params);
+        const scheduleRows = (scheduleResult && Array.isArray(scheduleResult) && scheduleResult[0]) ? scheduleResult[0] as any[] : [];
         
         const schedules: MonthlySchedule[] = [];
 
-        for (const scheduleRow of scheduleRows as any[]) {
+        for (const scheduleRow of scheduleRows) {
             const scheduleId = scheduleRow.id;
 
             
@@ -58,13 +62,29 @@ export async function getMonthlySchedules(
                 shiftsParams.push(startDate, endDate);
             }
 
-            const [shifts] = await connection.execute(shiftsQuery, shiftsParams);
-            const [violationRows] = await connection.execute(
-                'SELECT p.message, p.date, e.nombre as employeeName FROM `problemashorarios` p LEFT JOIN `empleados` e ON p.employeeId = e.id_empleado WHERE p.`monthlyScheduleId` = ?',
-                [scheduleId]
-            );
+            let shifts: any[] = [];
+            let violationRows: any[] = [];
+            
+            try {
+                const shiftsResult = await connection.execute(shiftsQuery, shiftsParams);
+                shifts = (shiftsResult && Array.isArray(shiftsResult) && shiftsResult[0]) ? shiftsResult[0] as any[] : [];
+            } catch (error) {
+                console.error('Error fetching shifts:', error);
+                shifts = [];
+            }
+            
+            try {
+                const violationResult = await connection.query(
+                    'SELECT p.message, p.date, e.nombre as employeeName FROM `problemashorarios` p LEFT JOIN `empleados` e ON p.employeeId = e.id_empleado WHERE p.`monthlyScheduleId` = ?',
+                    [scheduleId]
+                );
+                violationRows = (violationResult && Array.isArray(violationResult) && violationResult[0]) ? violationResult[0] as any[] : [];
+            } catch (error) {
+                console.error('Error fetching violations:', error);
+                violationRows = [];
+            }
 
-            const violations = (violationRows as any[]).map(row => {
+            const violations = (violationRows as any[] ?? []).map(row => {
                 try {
                     // Intenta parsear el mensaje como JSON
                     const parsed = JSON.parse(row.message);
@@ -78,21 +98,24 @@ export async function getMonthlySchedules(
                 // Devuelve el formato antiguo compatible
                 return { details: row.message, date: row.date, employeeName: row.employeeName, rule: 'Incidencia General', severity: 'warning', category: 'serviceRule', shiftType: 'General' };
             });
-            const [scoreBreakdown] = await connection.execute('SELECT * FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
-
             
+            const scoreBreakdownResult = await connection.execute('SELECT * FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+            const scoreBreakdown = scoreBreakdownResult ? scoreBreakdownResult[0] : [];
 
             schedules.push({
                 ...scheduleRow,
                 id: scheduleId.toString(),
-                shifts: (shifts as any[]),
-                violations: (violations as any[]),
-                scoreBreakdown: scoreBreakdown && (scoreBreakdown as any).length > 0 ? (scoreBreakdown as any)[0] : null,
+                shifts: (shifts as any[] ?? []),
+                violations: (violations as any[] ?? []),
+                scoreBreakdown: (scoreBreakdown as any[])?.[0] ?? null,
             });
         }
         return schedules;
+    } catch (error) {
+        console.error("Error getting monthly schedules:", error);
+        throw error;
     } finally {
-        await connection.end();
+        connection.release();
     }
 }
 
@@ -111,19 +134,23 @@ export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'
             );
         }
 
-        const { shifts, violations, scoreBreakdown, horario_nombre, ...mainScheduleData } = schedule; // Incluir horario_nombre
+        const { shifts, violations, scoreBreakdown, horario_nombre, ...mainScheduleData } = schedule;
         const allEmployees = await getEmployees();
 
-        const [result] = await connection.execute(
-            'INSERT INTO horarios (scheduleKey, year, month, serviceId, serviceName, status, version, responseText, score, createdAt, updatedAt, horario_nombre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', // Añadir horario_nombre a la consulta
+        const result = await connection.execute(
+            'INSERT INTO horarios (scheduleKey, year, month, serviceId, serviceName, status, version, responseText, score, createdAt, updatedAt, horario_nombre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 mainScheduleData.scheduleKey, mainScheduleData.year, mainScheduleData.month, mainScheduleData.serviceId,
                 mainScheduleData.serviceName, mainScheduleData.status, mainScheduleData.version,
                 mainScheduleData.responseText, mainScheduleData.score, mainScheduleData.createdAt, mainScheduleData.updatedAt,
-                horario_nombre // Añadir el valor de horario_nombre
+                horario_nombre
             ]
         );
-        const scheduleId = (result as any).insertId;
+
+        if (!result || !result[0] || !(result[0] as any).insertId) {
+            throw new Error('Failed to create new schedule, insertId is missing.');
+        }
+        const scheduleId = (result[0] as any).insertId;
 
         if (shifts && shifts.length > 0) {
             const shiftValues = shifts.map(s => {
@@ -136,14 +163,12 @@ export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'
         if (violations && violations.length > 0) {
             const violationValues = violations.map(v => {
                 const employee = v.employeeName ? allEmployees.find((e: any) => e.nombre === v.employeeName) : null;
-                // Guarda el objeto de violación completo como un string JSON en la columna 'message'
                 const message = JSON.stringify({
                     rule: v.rule,
                     details: v.details,
                     severity: v.severity,
                     category: v.category,
                     shiftType: v.shiftType,
-                    // Incluye employeeName en el JSON por si el JOIN falla al recuperar
                     employeeName: v.employeeName 
                 });
                 return [scheduleId, employee ? employee.id_empleado : null, v.date, message];
@@ -161,10 +186,13 @@ export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'
         await connection.commit();
         
         // Obtener y devolver el horario recién creado
-        const [newScheduleRows] = await connection.execute('SELECT * FROM horarios WHERE id = ?', [scheduleId]);
-        const newSchedule = (newScheduleRows as any)[0];
+        const newScheduleResult = await connection.execute('SELECT * FROM horarios WHERE id = ?', [scheduleId]);
+        const newSchedule = newScheduleResult && newScheduleResult[0] ? (newScheduleResult[0] as any[])[0] : null;
 
-        // Devolver el objeto completo para que el frontend pueda usarlo
+        if (!newSchedule) {
+            throw new Error('Failed to retrieve created schedule');
+        }
+
         return {
             ...newSchedule,
             id: newSchedule.id.toString(),
@@ -178,7 +206,7 @@ export async function createMonthlySchedule(schedule: Omit<MonthlySchedule, 'id'
         console.error("Error creating monthly schedule:", error);
         throw error;
     } finally {
-        await connection.end();
+        connection.release();
     }
 }
 
@@ -212,7 +240,7 @@ export async function updateMonthlySchedule(schedule: MonthlySchedule): Promise<
 
         // Borrar detalles antiguos
         await connection.execute('DELETE FROM `horario_detalles` WHERE `horario_id` = ?', [scheduleId]);
-        await connection.execute('DELETE FROM `problemashorarios` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+        await connection.query('DELETE FROM `problemashorarios` WHERE `monthlyScheduleId` = ?', [scheduleId]);
         await connection.execute('DELETE FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
 
         const allEmployees = await getEmployees();
@@ -255,7 +283,7 @@ export async function updateMonthlySchedule(schedule: MonthlySchedule): Promise<
         console.error("Error updating monthly schedule:", error);
         throw error;
     } finally {
-        await connection.end();
+        connection.release();
     }
 }
 
@@ -295,21 +323,26 @@ export async function getSchedulesInDateRange(
 
         query += ' ORDER BY year ASC, month ASC';
 
-        const [scheduleRows] = await connection.execute(query, params);
+        const scheduleResult = await connection.execute(query, params);
+        const scheduleRows = scheduleResult ? scheduleResult[0] : [];
         const schedules: MonthlySchedule[] = [];
 
         for (const scheduleRow of scheduleRows as any[]) {
             const scheduleId = scheduleRow.id;
 
-            const [shifts] = await connection.execute(
+            const shiftsResult = await connection.execute(
                 'SELECT hd.*, e.nombre as employeeName, s.nombre_servicio as serviceName FROM `horario_detalles` hd JOIN `empleados` e ON hd.employeeId = e.id_empleado JOIN `servicios` s ON hd.serviceId = s.id_servicio WHERE hd.`horario_id` = ?',
                 [scheduleId]
             );
-            const [violationRows] = await connection.execute(
+            const shifts = shiftsResult ? shiftsResult[0] : [];
+            
+            const violationResult = await connection.query(
                 'SELECT p.message, p.date, e.nombre as employeeName FROM `problemashorarios` p LEFT JOIN `empleados` e ON p.employeeId = e.id_empleado WHERE p.`monthlyScheduleId` = ?',
                 [scheduleId]
             );
-            const violations = (violationRows as any[]).map(row => {
+            const violationRows = violationResult ? violationResult[0] : [];
+            
+            const violations = (violationRows as any[] ?? []).map(row => {
                 try {
                     const parsed = JSON.parse(row.message);
                     if (typeof parsed === 'object' && parsed !== null) {
@@ -320,22 +353,50 @@ export async function getSchedulesInDateRange(
                 }
                 return { details: row.message, date: row.date, employeeName: row.employeeName, rule: 'Incidencia General', severity: 'warning', category: 'serviceRule', shiftType: 'General' };
             });
-            const [scoreBreakdown] = await connection.execute('SELECT * FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+            
+            const scoreBreakdownResult = await connection.execute('SELECT * FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+            const scoreBreakdown = scoreBreakdownResult ? scoreBreakdownResult[0] : [];
 
             schedules.push({
                 ...scheduleRow,
                 id: scheduleId.toString(),
-                shifts: (shifts as any[]),
-                violations: (violations as any[]),
-                scoreBreakdown: scoreBreakdown && (scoreBreakdown as any).length > 0 ? (scoreBreakdown as any)[0] : null,
+                shifts: (shifts as any[] ?? []),
+                violations: (violations as any[] ?? []),
+                scoreBreakdown: (scoreBreakdown as any[])?.[0] ?? null,
             });
         }
         return schedules;
+    } catch (error) {
+        console.error("Error getting schedules in date range:", error);
+        throw error;
     } finally {
-        await connection.end();
+        connection.release();
     }
 }
 
 export function generateScheduleKey(year: string, month: string, serviceId: string): string {
     return `${year}-${month}-${serviceId}`;
+}
+
+export async function deleteMonthlySchedule(scheduleId: string): Promise<void> {
+    const connection = await getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // Borrar detalles antiguos
+        await connection.execute('DELETE FROM `horario_detalles` WHERE `horario_id` = ?', [scheduleId]);
+        await connection.query('DELETE FROM `problemashorarios` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+        await connection.execute('DELETE FROM `score_breakdowns` WHERE `monthlyScheduleId` = ?', [scheduleId]);
+
+        // Borrar el horario principal
+        await connection.execute('DELETE FROM `horarios` WHERE `id` = ?', [scheduleId]);
+
+        await connection.commit();
+    } catch (error) {
+        await connection.rollback();
+        console.error("Error deleting monthly schedule:", error);
+        throw error;
+    } finally {
+        connection.release();
+    }
 }
