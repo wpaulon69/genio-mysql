@@ -1,15 +1,15 @@
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
-import type { Employee, TurnoFijo, AsignacionEmpleado, TipoAsignacion } from '@/lib/types';
+import type { Employee, TurnoFijo, TipoAsignacion } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import React, { useEffect } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '../ui/input';
@@ -108,14 +108,14 @@ export default function EmployeePreferencesForm({ isOpen, onClose, onSubmit, emp
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isLoading) onClose(); }}>
-      <DialogContent className="sm:max-w-2xl md:max-h-[85vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Preferencias de {employee.nombre}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-grow min-h-0">
-            <ScrollArea className="flex-grow p-4">
-              <div className="space-y-6">
+            <ScrollArea className="flex-grow px-4 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-6 py-2 pr-4">
                 <div>
                   <h3 className="text-lg font-medium">Turnos Fijos y Preferencias</h3>
                   <Separator className="my-2" />
@@ -236,10 +236,18 @@ export default function EmployeePreferencesForm({ isOpen, onClose, onSubmit, emp
                   </Button>
                 </div>
               </div>
+              <ScrollBar orientation="vertical" />
             </ScrollArea>
-            <DialogFooter className="mt-auto pt-4 flex justify-between w-full flex-shrink-0">
-              <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>Cancelar</Button>
-              <Button type="submit" disabled={isLoading}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Guardar Preferencias</Button>
+            <DialogFooter className="flex-shrink-0 pt-4 border-t bg-background">
+              <div className="flex justify-between w-full">
+                <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Guardar Preferencias
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>

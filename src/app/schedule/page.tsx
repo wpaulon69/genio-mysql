@@ -386,6 +386,9 @@ export default function SchedulePage() {
                           violations={selectedScheduleToDisplay.violations}
                           scoreBreakdown={selectedScheduleToDisplay.scoreBreakdown}
                           context="viewer"
+                          serviceId={parseInt(selectedScheduleToDisplay.serviceId)}
+                          currentMonth={selectedScheduleToDisplay.month}
+                          currentYear={selectedScheduleToDisplay.year}
                         />
                       </>
                     ) : (

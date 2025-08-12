@@ -1,58 +1,38 @@
-import {
-  getServices,
-  createService,
-  updateService,
-  deleteService,
-} from '@/lib/mysql/services';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
+import { getConnection } from '@/lib/mysql/config';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const services = await getServices();
-    return NextResponse.json(services);
-  } catch (error) {
-    console.error('Error in GET /api/services:', error);
-    return NextResponse.json({ message: 'Error fetching services' }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const newServiceId = await createService(body);
-    return NextResponse.json({ id: newServiceId }, { status: 201 });
-  } catch (error) {
-    console.error('Error in POST /api/services:', error);
-    return NextResponse.json({ message: 'Error creating service' }, { status: 500 });
-  }
-}
-
-export async function PUT(request: Request) {
-  try {
-    const body = await request.json();
-    const { id_servicio, ...data } = body;
-    if (!id_servicio) {
-      return NextResponse.json({ message: 'Service ID is required' }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
-    await updateService(id_servicio, data);
-    return NextResponse.json({ message: 'Service updated successfully' });
-  } catch (error) {
-    console.error('Error in PUT /api/services:', error);
-    return NextResponse.json({ message: 'Error updating service' }, { status: 500 });
-  }
-}
 
-export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id_servicio = searchParams.get('id');
-    if (!id_servicio) {
-      return NextResponse.json({ message: 'Service ID is required' }, { status: 400 });
+    // Obtener todos los servicios
+    const connection = await getConnection();
+    try {
+      const result = await connection.execute(`
+        SELECT 
+          id_servicio,
+          nombre_servicio,
+          descripcion
+        FROM servicios 
+        ORDER BY nombre_servicio ASC
+      `);
+
+      const services = result && Array.isArray(result) && result[0] ? result[0] as any[] : [];
+      return NextResponse.json(services);
+    } finally {
+      connection.release();
     }
-    await deleteService(Number(id_servicio));
-    return NextResponse.json({ message: 'Service deleted successfully' });
   } catch (error) {
-    console.error('Error in DELETE /api/services:', error);
-    return NextResponse.json({ message: 'Error deleting service' }, { status: 500 });
+    console.error('Error fetching services:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    );
   }
 }

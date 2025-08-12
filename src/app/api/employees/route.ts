@@ -1,58 +1,41 @@
-import {
-  getEmployees,
-  createEmployee,
-  updateEmployee,
-  deleteEmployee,
-} from '@/lib/mysql/employees';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/config';
+import { getConnection } from '@/lib/mysql/config';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const employees = await getEmployees();
-    return NextResponse.json(employees);
-  } catch (error) {
-    console.error('Error in GET /api/employees:', error);
-    return NextResponse.json({ message: 'Error fetching employees' }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const newEmployeeId = await createEmployee(body);
-    return NextResponse.json({ id: newEmployeeId }, { status: 201 });
-  } catch (error) {
-    console.error('Error in POST /api/employees:', error);
-    return NextResponse.json({ message: 'Error creating employee' }, { status: 500 });
-  }
-}
-
-export async function PUT(request: Request) {
-  try {
-    const body = await request.json();
-    const { id_empleado, ...data } = body;
-    if (!id_empleado) {
-      return NextResponse.json({ message: 'Employee ID is required' }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
-    await updateEmployee(Number(id_empleado), data);
-    return NextResponse.json({ message: 'Employee updated successfully' });
-  } catch (error) {
-    console.error('Error in PUT /api/employees:', error);
-    return NextResponse.json({ message: 'Error updating employee' }, { status: 500 });
-  }
-}
 
-export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id_empleado = searchParams.get('id');
-    if (!id_empleado) {
-      return NextResponse.json({ message: 'Employee ID is required' }, { status: 400 });
+    // Obtener todos los empleados activos
+    const connection = await getConnection();
+    try {
+      const result = await connection.execute(`
+        SELECT 
+          e.id_empleado,
+          e.nombre,
+          e.email_empleado as email,
+          s.nombre_servicio,
+          e.trabaja_feriados
+        FROM empleados e
+        LEFT JOIN servicios s ON e.id_servicio = s.id_servicio
+        ORDER BY e.nombre ASC
+      `);
+
+      const employees = result && Array.isArray(result) && result[0] ? result[0] as any[] : [];
+      return NextResponse.json(employees);
+    } finally {
+      connection.release();
     }
-    await deleteEmployee(Number(id_empleado));
-    return NextResponse.json({ message: 'Employee deleted successfully' });
   } catch (error) {
-    console.error('Error in DELETE /api/employees:', error);
-    return NextResponse.json({ message: 'Error deleting employee' }, { status: 500 });
+    console.error('Error fetching employees:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    );
   }
 }

@@ -52,3 +52,19 @@ export const defaultScheduleRulesConfig: ScheduleRulesConfig = {
     fixedShiftViolation: 20,
   },
 };
+
+/**
+ * Crea una configuración de reglas específica para un servicio,
+ * combinando los valores por defecto con la configuración del servicio.
+ */
+export function createServiceSpecificRulesConfig(service: any): ScheduleRulesConfig {
+  return {
+    ...defaultScheduleRulesConfig,
+    maxConsecutiveWorkDays: service.max_dias_trabajo_consecutivos || defaultScheduleRulesConfig.maxConsecutiveWorkDays,
+    preferredConsecutiveWorkDays: service.dias_trabajo_consecutivos_preferidos || defaultScheduleRulesConfig.preferredConsecutiveWorkDays,
+    maxConsecutiveDaysOff: service.max_descansos_consecutivos || defaultScheduleRulesConfig.maxConsecutiveDaysOff,
+    preferredConsecutiveDaysOff: service.dias_descanso_consecutivos_preferidos || defaultScheduleRulesConfig.preferredConsecutiveDaysOff,
+    minConsecutiveDaysOffRequiredBeforeWork: service.min_descansos_requeridos_antes_de_trabajar || defaultScheduleRulesConfig.minConsecutiveDaysOffRequiredBeforeWork,
+    defaultTargetCompleteWeekendsOff: service.fds_descanso_completo_objetivo || defaultScheduleRulesConfig.defaultTargetCompleteWeekendsOff,
+  };
+}

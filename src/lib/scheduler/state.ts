@@ -43,16 +43,22 @@ export function initializeEmployeeStatesFromHistory(
   const sortedPreviousShifts = (previousMonthShifts || []).sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
   const lookbackDays = Math.max(rulesConfig.maxConsecutiveWorkDays, rulesConfig.maxConsecutiveDaysOff, 7);
 
+
+
   employeesForService.forEach(emp => {
     let currentConsecutiveWork = 0;
     let currentConsecutiveRest = 0;
     let lastTypeEncountered: EmployeeState['lastShiftType'] = undefined;
     let lastWorkShiftEnd: Date | null = null;
 
+
+
     for (let i = lookbackDays - 1; i >= 0; i--) {
       const dateToCheck = subDays(firstDayOfCurrentMonth, i + 1); // Iterate from oldest to newest day
       const dateToCheckStr = format(dateToCheck, 'yyyy-MM-dd');
       const shiftToday = sortedPreviousShifts.find(s => s.date === dateToCheckStr && s.employeeName === emp.nombre);
+
+
 
       if (shiftToday) {
         const shiftType = getShiftTypeForEval(shiftToday);
@@ -68,11 +74,15 @@ export function initializeEmployeeStatesFromHistory(
           lastTypeEncountered = shiftType;
         }
       } else { // No shift found for the day
-        currentConsecutiveRest = (lastTypeEncountered === 'D' || lastTypeEncountered === 'F' || lastTypeEncountered === 'LAO' || lastTypeEncountered === 'LM' || lastTypeEncountered === 'C' || lastTypeEncountered === undefined) ? currentConsecutiveRest + 1 : 1;
+        // CORRECCIÓN RADICAL: Limitar días consecutivos sin datos a máximo 1
+        // Esto evita violaciones falsas por datos incompletos del mes anterior
+        currentConsecutiveRest = 1; // Siempre resetear a 1 para días sin datos
         currentConsecutiveWork = 0;
         lastTypeEncountered = 'D'; // Assume rest day if no shift
       }
     }
+
+
     employeeStates[emp.id_empleado] = {
       id: emp.id_empleado,
       name: emp.nombre,
@@ -83,6 +93,8 @@ export function initializeEmployeeStatesFromHistory(
       lastActualWorkShiftEndTime: lastWorkShiftEnd,
       completeWeekendsOffThisMonth: 0
     };
+
+
   });
   return employeeStates;
 }

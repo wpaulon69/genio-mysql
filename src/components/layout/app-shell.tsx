@@ -18,6 +18,8 @@ import { LogOut, Settings, UserCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { signOut } from 'next-auth/react';
+import { useAuth } from '@/lib/auth/hooks';
 
 /**
  * Props para el componente `AppShell`.
@@ -41,6 +43,22 @@ interface AppShellProps {
  * @returns {JSX.Element} El elemento JSX que representa la estructura principal de la aplicación.
  */
 export default function AppShell({ children }: AppShellProps) {
+  const { user } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      console.log('🔄 Cerrando sesión...');
+      await signOut({ 
+        callbackUrl: '/auth/signin',
+        redirect: true 
+      });
+    } catch (error) {
+      console.error('❌ Error al cerrar sesión:', error);
+      // Fallback: redirigir manualmente
+      window.location.href = '/auth/signin';
+    }
+  };
+
   return (
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen">
@@ -60,8 +78,36 @@ export default function AppShell({ children }: AppShellProps) {
           <SidebarContent className="flex-1 p-2">
             <SidebarNav />
           </SidebarContent>
-          <SidebarFooter className="p-4 border-t group-data-[collapsible=icon]:hidden">
-            <p className="text-xs text-muted-foreground">&copy; 2024 Horarios</p>
+          <SidebarFooter className="p-4 border-t">
+            <div className="group-data-[collapsible=icon]:hidden space-y-2">
+              {user && (
+                <div className="text-xs text-muted-foreground">
+                  <div className="font-medium">{user.name}</div>
+                  <div>{user.role.displayName}</div>
+                </div>
+              )}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleLogout}
+                className="w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-50"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar Sesión
+              </Button>
+              <p className="text-xs text-muted-foreground">&copy; 2024 Horarios</p>
+            </div>
+            <div className="hidden group-data-[collapsible=icon]:block">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleLogout}
+                className="w-full text-red-600 hover:text-red-600 hover:bg-red-50"
+                title="Cerrar Sesión"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </SidebarFooter>
         </Sidebar>
         <SidebarInset className="flex-1 flex flex-col">
@@ -80,7 +126,16 @@ export default function AppShell({ children }: AppShellProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  {user ? (
+                    <div>
+                      <div className="font-medium">{user.name}</div>
+                      <div className="text-xs text-muted-foreground">{user.role.displayName}</div>
+                    </div>
+                  ) : (
+                    'Mi Cuenta'
+                  )}
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <UserCircle className="mr-2 h-4 w-4" />
@@ -91,7 +146,7 @@ export default function AppShell({ children }: AppShellProps) {
                   <span>Configuración</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Cerrar Sesión</span>
                 </DropdownMenuItem>

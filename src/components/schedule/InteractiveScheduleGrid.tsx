@@ -112,6 +112,17 @@ export default function InteractiveScheduleGrid({
     setScheduleName(initialScheduleName || '');
   }, [initialScheduleName]);
 
+  // Helper function to get full service data
+  const getFullService = async () => {
+    try {
+      const serviceResponse = await fetch(`/api/services/${targetService.id_servicio}`);
+      return serviceResponse.ok ? await serviceResponse.json() : targetService;
+    } catch (error) {
+      console.warn('Could not fetch full service data, using basic service info');
+      return targetService;
+    }
+  };
+
   const handleReevaluate = async () => {
     if (!targetService) return;
     setIsEvaluating(true);
@@ -130,7 +141,7 @@ export default function InteractiveScheduleGrid({
       const response = await fetch('/api/evaluate-schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shifts: editableShifts, service: targetService, month, year, employees: allEmployees, holidays, previousMonthShifts }),
+        body: JSON.stringify({ shifts: editableShifts, service: await getFullService(), month, year, employees: allEmployees, holidays, previousMonthShifts }),
       });
 
       if (!response.ok) throw new Error((await response.json()).message || 'Error al evaluar');
@@ -167,7 +178,7 @@ export default function InteractiveScheduleGrid({
       const response = await fetch('/api/evaluate-schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shifts: editableShifts, service: targetService, month, year, employees: allEmployees, holidays, previousMonthShifts }),
+        body: JSON.stringify({ shifts: editableShifts, service: await getFullService(), month, year, employees: allEmployees, holidays, previousMonthShifts }),
       });
 
       if (response.ok) {
@@ -332,7 +343,16 @@ export default function InteractiveScheduleGrid({
         </CardContent>
       </Card>
 
-      {evaluationResult && <div className="mt-4"><ScheduleEvaluationDisplay {...evaluationResult} /></div>}
+      {evaluationResult && (
+        <div className="mt-4">
+          <ScheduleEvaluationDisplay 
+            {...evaluationResult} 
+            serviceId={targetService?.id_servicio}
+            currentMonth={month}
+            currentYear={year}
+          />
+        </div>
+      )}
 
       {!isReadOnly && (
         <div className="mt-6 flex justify-between">

@@ -45,10 +45,10 @@ export default function ScheduleView({ shifts, employees, services, scheduleId }
     return shifts.filter(shift => {
       const matchesService = selectedService === ALL_SERVICES_OPTION_VALUE ? true : shift.serviceId?.toString() === selectedService;
       const matchesEmployee = selectedEmployee === ALL_EMPLOYEES_OPTION_VALUE ? true : shift.employeeId?.toString() === selectedEmployee;
-      
+
       const shiftDate = parseISO(shift.date);
       const matchesDate = selectedDate && isValid(shiftDate) ? format(shiftDate, 'yyyy-MM-dd', { locale: es }) === format(selectedDate, 'yyyy-MM-dd', { locale: es }) : true;
-      
+
       const lowerSearchTerm = searchTerm.toLowerCase();
       const matchesSearch = searchTerm ?
         (shift.employeeId && getEmployeeName(shift.employeeId).toLowerCase().includes(lowerSearchTerm)) ||
@@ -116,9 +116,9 @@ export default function ScheduleView({ shifts, employees, services, scheduleId }
               <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus locale={es} />
             </PopoverContent>
           </Popover>
-          
-          <Input 
-            placeholder="Buscar turnos..." 
+
+          <Input
+            placeholder="Buscar turnos..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full md:w-[200px]"

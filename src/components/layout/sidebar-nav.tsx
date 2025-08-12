@@ -17,6 +17,7 @@ import {
   LineChart,
   UserCog,
   CalendarHeart,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -45,7 +46,9 @@ const navItems: NavItem[] = [
   { href: '/schedule', label: 'Horario', icon: CalendarDays, tooltip: 'Ver y Generar Horario' },
   { href: '/reports', label: 'Informes', icon: LineChart, tooltip: 'Ver Informes' },
   { href: '/service-overview', label: 'Personal por Servicio', icon: UserCog, tooltip: 'Ver Personal por Servicio' },
+  { href: '/service-management', label: 'Mi Servicio', icon: UserCog, tooltip: 'Mi Servicio - Panel de Gestión' },
   { href: '/holidays', label: 'Feriados', icon: CalendarHeart, tooltip: 'Administrar Feriados' },
+  { href: '/admin', label: 'Administración', icon: Settings, tooltip: 'Panel de Administración' },
 ];
 
 /**

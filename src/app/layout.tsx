@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import AppShell from '@/components/layout/app-shell';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'; // Optional: for dev tools
+import { SessionProvider } from 'next-auth/react';
 import React from 'react'; // Import React for useState
 
 // export const metadata: Metadata = { // Metadata can't be used in a client component directly
@@ -42,13 +43,15 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <QueryClientProvider client={queryClient}>
-          <AppShell>
-            {children}
-          </AppShell>
-          <Toaster />
-          <ReactQueryDevtools initialIsOpen={false} />
-        </QueryClientProvider>
+        <SessionProvider>
+          <QueryClientProvider client={queryClient}>
+            <AppShell>
+              {children}
+            </AppShell>
+            <Toaster />
+            <ReactQueryDevtools initialIsOpen={false} />
+          </QueryClientProvider>
+        </SessionProvider>
       </body>
     </html>
   );

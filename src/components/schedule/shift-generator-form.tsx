@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import GenerationInfo from './GenerationInfo';
 import { es } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { defaultScheduleRulesConfig, type ScheduleRulesConfig } from '@/lib/scheduler/config';
+import { createServiceSpecificRulesConfig, type ScheduleRulesConfig } from '@/lib/scheduler/config';
 import { useToast } from '@/hooks/use-toast';
 import InteractiveScheduleGrid from './InteractiveScheduleGrid';
 import ScheduleEvaluationDisplay from './schedule-evaluation-display';
@@ -107,7 +107,7 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
 
     const employeesForService = allEmployees.filter(emp => emp.id_servicio.toString() === selectedService.id_servicio.toString());
     
-    setGenerationInfo({ service: selectedService, employees: employeesForService, rulesConfig: defaultScheduleRulesConfig });
+    setGenerationInfo({ service: selectedService, employees: employeesForService, rulesConfig: createServiceSpecificRulesConfig(selectedService) });
 
     setIsGenerating(true);
     setError(null);
@@ -123,7 +123,7 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
         allEmployees,
         holidays,
         null, // previousMonthSchedule.shifts
-        defaultScheduleRulesConfig
+        createServiceSpecificRulesConfig(selectedService)
       );
       setGeneratedShifts(result.generatedShifts);
       setEvaluation({
@@ -261,6 +261,9 @@ export default function ShiftGeneratorForm({ allEmployees, allServices }: ShiftG
             violations={evaluation.violations}
             scoreBreakdown={evaluation.scoreBreakdown}
             context="generator"
+            serviceId={selectedService?.id_servicio}
+            currentMonth={form.getValues('month')}
+            currentYear={form.getValues('year')}
           />
           <div className="mt-4 flex justify-end">
             <Button onClick={() => {

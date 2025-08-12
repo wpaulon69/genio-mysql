@@ -7,18 +7,30 @@ import { Badge } from '@/components/ui/badge';
 // ScrollArea ya no se usa aquí directamente para la lista de violaciones
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { BadgeCheck, CircleAlert, CircleHelp, ShieldCheck, HeartHandshake, Info } from 'lucide-react';
+import { BadgeCheck, CircleAlert, CircleHelp, ShieldCheck, HeartHandshake, Info, Eye } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import ViolationDetailModal from './ViolationDetailModal';
 
 interface ScheduleEvaluationDisplayProps {
   score: number | null | undefined;
   violations: ScheduleViolation[] | null | undefined;
   scoreBreakdown: ScoreBreakdown | null | undefined;
-  context?: 'generator' | 'viewer'; 
+  context?: 'generator' | 'viewer';
+  serviceId?: number;
+  currentMonth?: string;
+  currentYear?: string;
 }
 
-export default function ScheduleEvaluationDisplay({ score, violations, scoreBreakdown, context = 'viewer' }: ScheduleEvaluationDisplayProps) {
+export default function ScheduleEvaluationDisplay({ 
+  score, 
+  violations, 
+  scoreBreakdown, 
+  context = 'viewer',
+  serviceId,
+  currentMonth,
+  currentYear
+}: ScheduleEvaluationDisplayProps) {
   const scoreToDisplay = score;
   const violationsToDisplay = violations;
   const breakdownToDisplay = scoreBreakdown;
@@ -100,34 +112,76 @@ export default function ScheduleEvaluationDisplay({ score, violations, scoreBrea
                     <AccordionContent className="max-h-72 overflow-y-auto p-3">
                       <ul className="space-y-3"> {/* ul ya no necesita padding propio aquí */}
                         {violationsToDisplay.map((v, index) => (
-                          <li key={index} className={`p-3 rounded-md border ${v.severity === 'error' ? 'border-destructive/60 bg-destructive/10 text-destructive-foreground/90' : 'border-yellow-500/60 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400'}`}>
-                            <div className="flex items-start gap-2">
-                              {v.severity === 'error' ? <CircleAlert className="h-5 w-5 mt-0.5 text-destructive flex-shrink-0" /> : <CircleHelp className="h-5 w-5 mt-0.5 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />}
-                              <div>
-                                <span className="font-semibold block">
-                                  {v.severity === 'error' ? 'Error: ' : 'Advertencia: '}
-                                  {v.rule}
-                                </span>
-                                {((v.category === 'serviceRule') || (v.category === 'employeeWellbeing')) &&
-                                   <Badge
-                                      className={cn(
-                                        "mr-1 mt-1 text-xs px-2 py-0.5 rounded-md border font-medium", // Asegura padding y borde base
-                                        v.category === 'serviceRule'
-                                          ? "border-transparent bg-blue-600 text-primary-foreground hover:bg-blue-600/80"
-                                          : "border-transparent bg-green-600 text-primary-foreground hover:bg-green-600/80"
-                                      )}
-                                    >
-                                      {v.category === 'serviceRule' ? 'Regla Servicio' : 'Bienestar Personal'}
-                                   </Badge>
-                                }
-                                <p className="text-xs opacity-90 mt-1">
-                                  {v.employeeName && <><strong>Empleado:</strong> {v.employeeName} </>}
-                                  {v.date ? <><strong>Fecha:</strong> {v.date} </> : <><strong>Fecha:</strong> Todo el mes </>}
-                                  {v.shiftType && v.shiftType !== 'General' && <><strong>Turno:</strong> {v.shiftType} </>}
-                                </p>
-                                <p className="text-sm mt-1.5">{v.details}</p>
+                          <li key={index}>
+                            {serviceId && currentMonth && currentYear ? (
+                              <ViolationDetailModal
+                                violation={v}
+                                serviceId={serviceId}
+                                currentMonth={currentMonth}
+                                currentYear={currentYear}
+                              >
+                                <div className={`p-3 rounded-md border cursor-pointer hover:shadow-md transition-shadow ${v.severity === 'error' ? 'border-destructive/60 bg-destructive/10 text-destructive-foreground/90 hover:bg-destructive/15' : 'border-yellow-500/60 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/15'}`}>
+                                  <div className="flex items-start gap-2">
+                                    {v.severity === 'error' ? <CircleAlert className="h-5 w-5 mt-0.5 text-destructive flex-shrink-0" /> : <CircleHelp className="h-5 w-5 mt-0.5 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />}
+                                    <div className="flex-1">
+                                      <span className="font-semibold block">
+                                        {v.severity === 'error' ? 'Error: ' : 'Advertencia: '}
+                                        {v.rule}
+                                      </span>
+                                      {((v.category === 'serviceRule') || (v.category === 'employeeWellbeing')) &&
+                                         <Badge
+                                            className={cn(
+                                              "mr-1 mt-1 text-xs px-2 py-0.5 rounded-md border font-medium", // Asegura padding y borde base
+                                              v.category === 'serviceRule'
+                                                ? "border-transparent bg-blue-600 text-primary-foreground hover:bg-blue-600/80"
+                                                : "border-transparent bg-green-600 text-primary-foreground hover:bg-green-600/80"
+                                            )}
+                                          >
+                                            {v.category === 'serviceRule' ? 'Regla Servicio' : 'Bienestar Personal'}
+                                         </Badge>
+                                      }
+                                      <p className="text-xs opacity-90 mt-1">
+                                        {v.employeeName && <><strong>Empleado:</strong> {v.employeeName} </>}
+                                        {v.date ? <><strong>Fecha:</strong> {v.date} </> : <><strong>Fecha:</strong> Todo el mes </>}
+                                        {v.shiftType && v.shiftType !== 'General' && <><strong>Turno:</strong> {v.shiftType} </>}
+                                      </p>
+                                      <p className="text-sm mt-1.5">{v.details}</p>
+                                    </div>
+                                    <Eye className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                                  </div>
+                                </div>
+                              </ViolationDetailModal>
+                            ) : (
+                              <div className={`p-3 rounded-md border ${v.severity === 'error' ? 'border-destructive/60 bg-destructive/10 text-destructive-foreground/90' : 'border-yellow-500/60 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400'}`}>
+                                <div className="flex items-start gap-2">
+                                  {v.severity === 'error' ? <CircleAlert className="h-5 w-5 mt-0.5 text-destructive flex-shrink-0" /> : <CircleHelp className="h-5 w-5 mt-0.5 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />}
+                                  <div>
+                                    <span className="font-semibold block">
+                                      {v.severity === 'error' ? 'Error: ' : 'Advertencia: '}
+                                      {v.rule}
+                                    </span>
+                                    {((v.category === 'serviceRule') || (v.category === 'employeeWellbeing')) &&
+                                       <Badge
+                                          className={cn(
+                                            "mr-1 mt-1 text-xs px-2 py-0.5 rounded-md border font-medium", // Asegura padding y borde base
+                                            v.category === 'serviceRule'
+                                              ? "border-transparent bg-blue-600 text-primary-foreground hover:bg-blue-600/80"
+                                              : "border-transparent bg-green-600 text-primary-foreground hover:bg-green-600/80"
+                                          )}
+                                        >
+                                          {v.category === 'serviceRule' ? 'Regla Servicio' : 'Bienestar Personal'}
+                                       </Badge>
+                                    }
+                                    <p className="text-xs opacity-90 mt-1">
+                                      {v.employeeName && <><strong>Empleado:</strong> {v.employeeName} </>}
+                                      {v.date ? <><strong>Fecha:</strong> {v.date} </> : <><strong>Fecha:</strong> Todo el mes </>}
+                                      {v.shiftType && v.shiftType !== 'General' && <><strong>Turno:</strong> {v.shiftType} </>}
+                                    </p>
+                                    <p className="text-sm mt-1.5">{v.details}</p>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </li>
                         ))}
                       </ul>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { evaluateScheduleMetrics } from '@/lib/scheduler/evaluation';
-import { defaultScheduleRulesConfig } from '@/lib/scheduler/config';
+import { createServiceSpecificRulesConfig } from '@/lib/scheduler/config';
 import type { AIShift, Service, Employee, Holiday } from '@/lib/types';
 
 export async function POST(request: Request) {
@@ -28,6 +28,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Faltan parámetros requeridos para la evaluación.' }, { status: 400 });
     }
 
+    const rulesConfig = createServiceSpecificRulesConfig(service);
+
     const evaluationResult = await evaluateScheduleMetrics(
       shifts,
       service,
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
       employees,
       holidays,
       previousMonthShifts,
-      defaultScheduleRulesConfig
+      rulesConfig
     );
 
     return NextResponse.json(evaluationResult);

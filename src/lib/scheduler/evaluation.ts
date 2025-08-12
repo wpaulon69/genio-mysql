@@ -179,6 +179,8 @@ export async function evaluateScheduleMetrics(
                 // Si no, reinicia a 1 (este es el primer día de descanso después de trabajar).
                 const newConsecutiveRestDays = isRestDay(state.lastShiftType) ? state.consecutiveRestDays + 1 : 1;
 
+
+
                 // Verifica la violación ANTES de actualizar el estado para registrarla en el día correcto.
                 if (newConsecutiveRestDays > rulesConfig.maxConsecutiveDaysOff) {
                     evalCtx.violations.push({ employeeName: emp.nombre, date: currentDateStrYYYYMMDD, shiftType: 'General', rule: "Exceso Días Descanso Consecutivos", details: `Descansó ${newConsecutiveRestDays} días (máx: ${rulesConfig.maxConsecutiveDaysOff}).`, severity: 'warning', category: 'employeeWellbeing' });
