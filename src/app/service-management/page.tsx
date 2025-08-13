@@ -18,7 +18,7 @@ import {
   TrendingUp,
   AlertCircle
 } from 'lucide-react';
-import { PERMISSIONS } from '@/lib/types/auth';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 import Link from 'next/link';
 
 interface ServiceStats {
@@ -36,14 +36,19 @@ export default function ServiceManagementDashboard() {
   const { user } = useAuth();
 
   // Fetch service statistics
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading, error } = useQuery({
     queryKey: ['service-stats', user?.serviceId],
     queryFn: async () => {
       const response = await fetch(`/api/service-management/stats`);
-      if (!response.ok) throw new Error('Error fetching service stats');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
       return response.json();
     },
-    enabled: !!user?.serviceId
+    enabled: !!user?.serviceId,
+    retry: 2,
+    retryDelay: 1000
   });
 
   if (!user?.serviceId) {
@@ -106,6 +111,23 @@ export default function ServiceManagementDashboard() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                 <p className="mt-2 text-muted-foreground">Cargando estadísticas...</p>
               </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <div className="text-red-600 mb-2">
+                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                  Error al cargar estadísticas
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {error.message || 'Error desconocido'}
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                >
+                  Reintentar
+                </Button>
+              </div>
             ) : stats ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="text-center">
@@ -161,26 +183,23 @@ export default function ServiceManagementDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Calendar className="mr-2 h-5 w-5 text-green-500" />
-                Gestionar Horarios
+                Horarios de Trabajo
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Crea, modifica y administra los horarios de trabajo de tu servicio para garantizar la cobertura adecuada.
+                Gestiona los horarios mensuales de tu servicio. Puedes ver horarios existentes y generar nuevos usando IA.
               </p>
-              <div className="flex space-x-2">
-                <Button asChild className="flex-1">
-                  <Link href="/service-management/schedules">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Ver Horarios
-                  </Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link href="/service-management/schedules/create">
-                    <ClipboardList className="mr-2 h-4 w-4" />
-                    Crear
-                  </Link>
-                </Button>
+              <Button asChild className="w-full">
+                <Link href="/service-management/schedules">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Ir a Horarios
+                </Link>
+              </Button>
+              <div className="mt-3 p-2 bg-green-50 rounded-md">
+                <p className="text-xs text-green-700 text-center">
+                  ✨ <strong>Nuevo:</strong> Generación automática de horarios con IA
+                </p>
               </div>
             </CardContent>
           </Card>

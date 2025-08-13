@@ -11,7 +11,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
         ur.name as role_name,
         ur.display_name as role_display_name,
         ur.level as role_level,
-        GROUP_CONCAT(p.id) as permissions
+        GROUP_CONCAT(p.name) as permissions
       FROM users u
       JOIN user_roles ur ON u.role_id = ur.id
       LEFT JOIN role_permissions rp ON ur.id = rp.role_id
@@ -63,7 +63,7 @@ export async function getUserById(id: string): Promise<User | null> {
         ur.name as role_name,
         ur.display_name as role_display_name,
         ur.level as role_level,
-        GROUP_CONCAT(p.id) as permissions
+        GROUP_CONCAT(p.name) as permissions
       FROM users u
       JOIN user_roles ur ON u.role_id = ur.id
       LEFT JOIN role_permissions rp ON ur.id = rp.role_id
@@ -230,7 +230,7 @@ export async function getUserRoles(): Promise<UserRole[]> {
   const connection = await getConnection();
   try {
     const result = await connection.execute(`
-      SELECT ur.*, GROUP_CONCAT(p.id) as permissions
+      SELECT ur.*, GROUP_CONCAT(p.name) as permissions
       FROM user_roles ur
       LEFT JOIN role_permissions rp ON ur.id = rp.role_id
       LEFT JOIN permissions p ON rp.permission_id = p.id

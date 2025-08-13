@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+
 /**
  * `ServicesPage` es el componente de página para administrar los servicios del hospital.
  * Permite a los usuarios ver una lista de servicios existentes, añadir nuevos servicios,

@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth/config';
 import { getAllUsers, createUser, getUserRoles } from '@/lib/mysql/users';
 import { getServices } from '@/lib/mysql/services';
 import { getEmployees } from '@/lib/mysql/employees';
-import { PERMISSIONS } from '@/lib/types/auth';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 
 export async function GET() {
   try {

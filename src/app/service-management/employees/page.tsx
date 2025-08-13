@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth/hooks';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import EmployeeManagementRoute from '@/components/auth/EmployeeManagementRoute';
 import SimpleLogoutButton from '@/components/auth/SimpleLogoutButton';
 import PageHeader from '@/components/common/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +23,7 @@ import {
   Phone,
   Calendar
 } from 'lucide-react';
-import { PERMISSIONS } from '@/lib/types/auth';
+import { PERMISSIONS, canManageEmployees } from '@/lib/auth/permissions';
 import { useToast } from '@/hooks/use-toast';
 import EmployeeEditForm from '@/components/service-management/EmployeeEditForm';
 import EmployeePreferencesForm from '@/components/employees/employee-preferences-form';
@@ -135,7 +135,7 @@ export default function ServiceEmployeesPage() {
 
   if (!user?.serviceId) {
     return (
-      <ProtectedRoute permission={PERMISSIONS.MANAGE_SERVICE_EMPLOYEES}>
+      <EmployeeManagementRoute>
         <div className="container mx-auto">
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6">
@@ -145,12 +145,12 @@ export default function ServiceEmployeesPage() {
             </CardContent>
           </Card>
         </div>
-      </ProtectedRoute>
+      </EmployeeManagementRoute>
     );
   }
 
   return (
-    <ProtectedRoute permission={PERMISSIONS.MANAGE_SERVICE_EMPLOYEES}>
+    <EmployeeManagementRoute>
       <div className="container mx-auto">
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center space-x-4">
@@ -333,6 +333,6 @@ export default function ServiceEmployeesPage() {
           />
         )}
       </div>
-    </ProtectedRoute>
+    </EmployeeManagementRoute>
   );
 }

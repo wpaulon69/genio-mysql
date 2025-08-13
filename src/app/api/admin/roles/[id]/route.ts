@@ -6,7 +6,7 @@ import { getConnection } from '@/lib/mysql/config';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -20,7 +20,8 @@ export async function PUT(
     }
 
     const { displayName, level, description, permissions } = await request.json();
-    const roleId = params.id;
+    const resolvedParams = await params;
+    const roleId = resolvedParams.id;
 
     const connection = await getConnection();
     try {
@@ -75,7 +76,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -88,7 +89,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Sin permisos suficientes' }, { status: 403 });
     }
 
-    const roleId = params.id;
+    const resolvedParams = await params;
+    const roleId = resolvedParams.id;
 
     const connection = await getConnection();
     try {

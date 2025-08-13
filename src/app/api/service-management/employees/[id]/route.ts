@@ -6,7 +6,7 @@ import { getConnection } from '@/lib/mysql/config';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -23,7 +23,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Usuario sin servicio asignado' }, { status: 400 });
     }
 
-    const employeeId = parseInt(params.id);
+    const resolvedParams = await params;
+    const employeeId = parseInt(resolvedParams.id);
     const serviceId = session.user.serviceId;
     const {
       nombre,
@@ -97,7 +98,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -114,7 +115,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Usuario sin servicio asignado' }, { status: 400 });
     }
 
-    const employeeId = parseInt(params.id);
+    const resolvedParams = await params;
+    const employeeId = parseInt(resolvedParams.id);
     const serviceId = session.user.serviceId;
     const connection = await getConnection();
     

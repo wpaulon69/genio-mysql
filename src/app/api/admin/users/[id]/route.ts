@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { updateUser, deactivateUser, activateUser } from '@/lib/mysql/users';
-import { PERMISSIONS } from '@/lib/types/auth';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -19,7 +19,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
-    await updateUser(params.id, {
+    const resolvedParams = await params;
+    await updateUser(resolvedParams.id, {
       name,
       email,
       password: password || undefined, // Solo actualizar si se proporciona
@@ -42,7 +43,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -50,14 +51,16 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    
     // No permitir eliminar el propio usuario
-    if (session.user.id === params.id) {
+    if (session.user.id === resolvedParams.id) {
       return NextResponse.json({ message: 'Cannot delete your own user' }, { status: 400 });
     }
 
     // Importar deleteUser
     const { deleteUser } = await import('@/lib/mysql/users');
-    await deleteUser(params.id);
+    await deleteUser(resolvedParams.id);
 
     return NextResponse.json({ message: 'User deleted successfully' });
   } catch (error) {

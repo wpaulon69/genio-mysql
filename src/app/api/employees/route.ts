@@ -17,10 +17,15 @@ export async function GET(request: NextRequest) {
       const result = await connection.execute(`
         SELECT 
           e.id_empleado,
+          e.id_servicio,
           e.nombre,
-          e.email_empleado as email,
-          s.nombre_servicio,
-          e.trabaja_feriados
+          e.email_empleado,
+          e.trabaja_feriados,
+          e.elegible_franco_pos_guardia,
+          e.prefiere_trabajar_fines_semana,
+          e.disponibilidad_general,
+          e.restricciones_especificas,
+          s.nombre_servicio
         FROM empleados e
         LEFT JOIN servicios s ON e.id_servicio = s.id_servicio
         ORDER BY e.nombre ASC

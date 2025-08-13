@@ -40,13 +40,13 @@ interface NavItem {
  * Cada objeto `NavItem` especifica la ruta, etiqueta, icono y tooltip.
  */
 const navItems: NavItem[] = [
+  { href: '/service-management', label: 'Mi Servicio', icon: UserCog, tooltip: 'Mi Servicio - Panel de Gestión' },
   { href: '/', label: 'Panel', icon: LayoutDashboard, tooltip: 'Panel' },
   { href: '/services', label: 'Servicios', icon: BriefcaseMedical, tooltip: 'Administrar Servicios' },
   { href: '/employees', label: 'Empleados', icon: UsersRound, tooltip: 'Administrar Empleados' },
   { href: '/schedule', label: 'Horario', icon: CalendarDays, tooltip: 'Ver y Generar Horario' },
   { href: '/reports', label: 'Informes', icon: LineChart, tooltip: 'Ver Informes' },
   { href: '/service-overview', label: 'Personal por Servicio', icon: UserCog, tooltip: 'Ver Personal por Servicio' },
-  { href: '/service-management', label: 'Mi Servicio', icon: UserCog, tooltip: 'Mi Servicio - Panel de Gestión' },
   { href: '/holidays', label: 'Feriados', icon: CalendarHeart, tooltip: 'Administrar Feriados' },
   { href: '/admin', label: 'Administración', icon: Settings, tooltip: 'Panel de Administración' },
 ];

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { PERMISSIONS } from '@/lib/types/auth';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 import { useToast } from '@/hooks/use-toast';
 
 import type { Employee, Service, MonthlySchedule, Holiday } from '@/lib/types';
@@ -50,6 +50,8 @@ export default function ServiceSchedulesPage() {
   const [selectedMonthView, setSelectedMonthView] = useState<string>((new Date().getMonth() + 1).toString());
   const [activeTab, setActiveTab] = useState<string>("view-schedule");
   const [selectedScheduleToDisplay, setSelectedScheduleToDisplay] = useState<MonthlySchedule | null>(null);
+  const [scheduleToEdit, setScheduleToEdit] = useState<MonthlySchedule | null>(null);
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
 
 
 
@@ -120,6 +122,68 @@ export default function ServiceSchedulesPage() {
     }
   };
 
+  const handleEditSchedule = (schedule: MonthlySchedule) => {
+    setScheduleToEdit(schedule);
+    setIsEditMode(true);
+    setActiveTab("edit-schedule");
+    toast({
+      title: "Modo de edición activado",
+      description: `Editando: ${schedule.horario_nombre || `Horario ${schedule.id}`}`,
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setScheduleToEdit(null);
+    setIsEditMode(false);
+    setActiveTab("view-schedule");
+  };
+
+  const handleSaveEditedSchedule = async (editedShifts: AIShift[], status: 'published' | 'draft', evaluationResult: any | null) => {
+    if (!scheduleToEdit) return;
+
+    try {
+      // Crear el objeto de horario actualizado con la estructura correcta
+      const updatedSchedule: MonthlySchedule = {
+        ...scheduleToEdit,
+        shifts: editedShifts,
+        status,
+        version: scheduleToEdit.version + 1,
+        updatedAt: Date.now(),
+        score: evaluationResult?.score || scheduleToEdit.score,
+        violations: evaluationResult?.violations || scheduleToEdit.violations,
+        scoreBreakdown: evaluationResult?.scoreBreakdown || scheduleToEdit.scoreBreakdown,
+        responseText: evaluationResult?.responseText || scheduleToEdit.responseText
+      };
+
+      const response = await fetch('/api/monthlySchedules', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedSchedule)
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al guardar el horario editado');
+      }
+
+      toast({
+        title: "Horario actualizado",
+        description: `El horario ha sido ${status === 'published' ? 'publicado' : 'guardado como borrador'} exitosamente.`,
+      });
+
+      // Refrescar la lista de horarios
+      refetchSchedules();
+      
+      // Salir del modo de edición
+      handleCancelEdit();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Error al guardar el horario editado",
+      });
+    }
+  };
+
   if (!user?.serviceId) {
     return (
       <ProtectedRoute permission={PERMISSIONS.MANAGE_SERVICE_EMPLOYEES}>
@@ -173,16 +237,21 @@ export default function ServiceSchedulesPage() {
               Horarios de {serviceInfo?.nombre_servicio}
             </h3>
             <p className="text-sm text-blue-700">
-              Aquí puedes visualizar los horarios publicados y borradores de tu servicio. 
-              Para crear nuevos horarios, contacta al administrador del hospital.
+              Aquí puedes visualizar los horarios existentes y generar nuevos horarios para tu servicio. 
+              Usa las pestañas para navegar entre ver horarios existentes y generar nuevos.
             </p>
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:w-2/3 mb-6">
+          <TabsList className={`grid w-full ${isEditMode ? 'grid-cols-3' : 'grid-cols-2'} md:w-2/3 mb-6`}>
             <TabsTrigger value="view-schedule">Ver Horarios</TabsTrigger>
             <TabsTrigger value="generate-schedule">Generar Horarios</TabsTrigger>
+            {isEditMode && (
+              <TabsTrigger value="edit-schedule" className="bg-blue-50 text-blue-700">
+                Editar Horario
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="view-schedule" className="mt-6">
@@ -289,12 +358,30 @@ export default function ServiceSchedulesPage() {
                                 </p>
                               </div>
                               <div className="flex items-center space-x-2">
-                                {selectedScheduleToDisplay?.id === schedule.id && (
-                                  <span className="text-primary font-medium text-sm">
-                                    <Eye className="inline mr-1 h-4 w-4" />
-                                    Viendo
-                                  </span>
-                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedScheduleToDisplay(schedule);
+                                  }}
+                                  className="flex items-center"
+                                >
+                                  <Eye className="mr-1 h-4 w-4" />
+                                  Ver
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditSchedule(schedule);
+                                  }}
+                                  className="flex items-center"
+                                >
+                                  <Edit className="mr-1 h-4 w-4" />
+                                  Editar
+                                </Button>
                               </div>
                             </div>
                           </div>
@@ -380,6 +467,68 @@ export default function ServiceSchedulesPage() {
                       Se necesita cargar la información del servicio para generar horarios.
                       <br />
                       <small>Debug: user.serviceId = {user?.serviceId || 'NULL'}</small>
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="edit-schedule" className="mt-6">
+            {isEditMode && scheduleToEdit && serviceInfo && (
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="flex items-center">
+                        <Edit className="mr-2 h-5 w-5 text-blue-500" />
+                        Editando Horario
+                      </CardTitle>
+                      <CardDescription>
+                        {scheduleToEdit.horario_nombre || `Horario ${scheduleToEdit.id}`} - {serviceInfo.nombre_servicio}
+                      </CardDescription>
+                    </div>
+                    <Button variant="outline" onClick={handleCancelEdit}>
+                      Cancelar Edición
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-4 p-3 bg-blue-50 rounded-md">
+                    <p className="text-sm text-blue-700">
+                      <Info className="inline mr-1 h-4 w-4" />
+                      Está editando un horario existente. Los cambios se guardarán sobre el horario actual.
+                    </p>
+                  </div>
+                  
+                  <InteractiveScheduleGrid
+                    initialShifts={scheduleToEdit.shifts || []}
+                    initialScheduleName={scheduleToEdit.horario_nombre || `Horario ${scheduleToEdit.id}`}
+                    allEmployees={employees}
+                    targetService={serviceInfo}
+                    month={selectedMonthView}
+                    year={selectedYearView}
+                    holidays={holidays}
+                    onShiftsChange={() => {}} // Los cambios se manejan internamente
+                    onScheduleNameChange={() => {}} // El nombre se mantiene
+                    onBackToConfig={handleCancelEdit}
+                    isReadOnly={false}
+                    onSave={handleSaveEditedSchedule}
+                    isSaving={false}
+                    onEvaluationComplete={() => {}}
+                  />
+                </CardContent>
+              </Card>
+            )}
+            
+            {!isEditMode && (
+              <Card>
+                <CardContent className="pt-6">
+                  <Alert>
+                    <Info className="h-5 w-5 mr-2"/>
+                    <AlertTitle>No hay horario en edición</AlertTitle>
+                    <AlertDescription>
+                      Seleccione un horario de la pestaña "Ver Horarios" y haga clic en "Editar" para comenzar.
                     </AlertDescription>
                   </Alert>
                 </CardContent>

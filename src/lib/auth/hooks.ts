@@ -2,6 +2,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import type { AuthSession, PermissionType } from '@/lib/types/auth';
+import { hasPermission } from '@/lib/auth/permissions';
 
 /**
  * Hook para obtener la sesión del usuario autenticado
@@ -25,10 +26,7 @@ export function usePermission(permission: PermissionType) {
   
   if (!user) return false;
   
-  // Super admin tiene todos los permisos
-  if (user.role.name === 'super_admin') return true;
-  
-  return user.permissions.includes(permission);
+  return hasPermission(user, permission);
 }
 
 /**
@@ -39,13 +37,10 @@ export function usePermissions(permissions: PermissionType[], requireAll = false
   
   if (!user) return false;
   
-  // Super admin tiene todos los permisos
-  if (user.role.name === 'super_admin') return true;
-  
   if (requireAll) {
-    return permissions.every(permission => user.permissions.includes(permission));
+    return permissions.every(permission => hasPermission(user, permission));
   } else {
-    return permissions.some(permission => user.permissions.includes(permission));
+    return permissions.some(permission => hasPermission(user, permission));
   }
 }
 

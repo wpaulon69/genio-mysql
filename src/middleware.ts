@@ -27,26 +27,19 @@ export default withAuth(
     // Verificar permisos específicos por ruta
     if (isAuth && token) {
       const userRole = token.role as any;
-      const userPermissions = token.permissions as string[];
       const pathname = req.nextUrl.pathname;
-
-      // Rutas que requieren permisos específicos
-      const routePermissions: Record<string, string> = {
-        '/services': 'view_all_services',
-        '/employees': 'view_all_employees',
-        '/schedule': 'view_all_schedules',
-        '/reports': 'view_all_reports',
-        '/holidays': 'manage_holidays'
-      };
-
-      // Verificar si la ruta requiere un permiso específico
-      const requiredPermission = routePermissions[pathname];
       
-      if (requiredPermission) {
-        // Super admin tiene todos los permisos
-        if (userRole?.name !== 'super_admin' && !userPermissions?.includes(requiredPermission)) {
-          return NextResponse.redirect(new URL('/unauthorized', req.url));
+      // Admin Hospital puede acceder a estas rutas
+      if (userRole?.name === 'admin_hospital') {
+        const adminRoutes = ['/services', '/employees', '/holidays', '/admin', '/reports'];
+        if (adminRoutes.includes(pathname)) {
+          return NextResponse.next();
         }
+      }
+      
+      // Super admin puede acceder a todo
+      if (userRole?.name === 'super_admin') {
+        return NextResponse.next();
       }
     }
 

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Shield, Settings, Activity, UserPlus, Key } from 'lucide-react';
 import Link from 'next/link';
-import { PERMISSIONS } from '@/lib/types/auth';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 
 export default function AdminPage() {
   const { user } = useAuth();

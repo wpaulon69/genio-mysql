@@ -279,9 +279,15 @@ export default function InteractiveScheduleGrid({
           <div className="flex-grow">
             <Label htmlFor="schedule-name-input" className="text-sm font-medium text-muted-foreground">Nombre del Horario</Label>
             <Input id="schedule-name-input" type="text" value={scheduleName} onChange={e => { setScheduleName(e.target.value); if (onScheduleNameChange) onScheduleNameChange(e.target.value); setHasUnsavedChanges(true); }} placeholder={`Ej: Horario ${targetService?.nombre_servicio} - ${monthName} ${currentYearStr}`} className="text-lg font-headline mt-1" disabled={isReadOnly} />
-            {!isReadOnly && <p className="text-sm text-muted-foreground">Puede editar los turnos manualmente. Use '-' para vaciar una celda.</p>}
+            {!isReadOnly && (
+              <p className="text-sm text-muted-foreground">Puede editar los turnos manualmente. Use '-' para vaciar una celda.</p>
+            )}
           </div>
-          {!isReadOnly && onBackToConfig && <Button onClick={() => { if (hasUnsavedChanges) { setIsConfirmExitOpen(true); } else { onBackToConfig(); } }} variant="outline"><ChevronLeft className="mr-2 h-4 w-4" /> Volver</Button>}
+          {!isReadOnly && onBackToConfig && (
+            <Button onClick={() => { if (hasUnsavedChanges) { setIsConfirmExitOpen(true); } else { onBackToConfig(); } }} variant="outline">
+              <ChevronLeft className="mr-2 h-4 w-4" /> Volver
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <ScrollArea className="w-full whitespace-nowrap rounded-md border">
@@ -290,7 +296,12 @@ export default function InteractiveScheduleGrid({
                 <TableRow>
                   <TableHead className="sticky left-0 bg-card z-20 truncate w-[180px] min-w-[180px]">Empleado</TableHead>
                   <TableHead className="sticky bg-card z-20 text-center w-[80px] min-w-[80px]" style={{ left: 180 }}>Total D</TableHead>
-                  {dayHeaders.map(h => <TableHead key={h.dayNumber} className={cn("text-center w-[70px] min-w-[70px]", h.isSpecialDay && "bg-pink-100 dark:bg-pink-900")}><div className={cn(h.isSpecialDay && "text-pink-600 dark:text-pink-400")}>{h.dayNumber}</div><div className="text-xs text-muted-foreground">{h.shortName}</div></TableHead>)}
+                  {dayHeaders.map(h => (
+                    <TableHead key={h.dayNumber} className={cn("text-center w-[70px] min-w-[70px]", h.isSpecialDay && "bg-pink-100 dark:bg-pink-900")}>
+                      <div className={cn(h.isSpecialDay && "text-pink-600 dark:text-pink-400")}>{h.dayNumber}</div>
+                      <div className="text-xs text-muted-foreground">{h.shortName}</div>
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -306,7 +317,11 @@ export default function InteractiveScheduleGrid({
                           <Select value={shiftType || '_EMPTY_'} onValueChange={v => handleShiftChange(name, h.dayNumber, v as GridShiftType)} disabled={isReadOnly}>
                             <SelectTrigger className={cn("h-8 w-full text-xs px-2", getShiftCellColorClass(shiftType))}><SelectValue placeholder="-" /></SelectTrigger>
                             <SelectContent>
-                              {SHIFT_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.displayValue}</SelectItem>)}
+                              {SHIFT_OPTIONS.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                  {opt.displayValue}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -318,23 +333,41 @@ export default function InteractiveScheduleGrid({
               <TableFooter>
                 <TableRow className="bg-muted font-semibold">
                   <TableCell className="sticky left-0 bg-muted z-10 w-[180px] min-w-[180px]">TPM</TableCell>
-                  <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]"></TableCell>
-                  {dayHeaders.map(h => <TableCell key={`m-${h.dayNumber}`} className="text-center">{dailyTotals[h.dayNumber]?.M || 0}</TableCell>)}
+                  <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]">&nbsp;</TableCell>
+                  {dayHeaders.map(h => (
+                    <TableCell key={`m-${h.dayNumber}`} className="text-center">
+                      {dailyTotals[h.dayNumber]?.M || 0}
+                    </TableCell>
+                  ))}
                 </TableRow>
                 <TableRow className="bg-muted font-semibold">
                   <TableCell className="sticky left-0 bg-muted z-10 w-[180px] min-w-[180px]">TPT</TableCell>
-                  <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]"></TableCell>
-                  {dayHeaders.map(h => <TableCell key={`t-${h.dayNumber}`} className="text-center">{dailyTotals[h.dayNumber]?.T || 0}</TableCell>)}
+                  <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]">&nbsp;</TableCell>
+                  {dayHeaders.map(h => (
+                    <TableCell key={`t-${h.dayNumber}`} className="text-center">
+                      {dailyTotals[h.dayNumber]?.T || 0}
+                    </TableCell>
+                  ))}
                 </TableRow>
-                {targetService?.habilitar_turno_noche && <TableRow className="bg-muted font-semibold">
-                  <TableCell className="sticky left-0 bg-muted z-10 w-[180px] min-w-[180px]">Total Noche (N)</TableCell>
-                  <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]"></TableCell>
-                  {dayHeaders.map(h => <TableCell key={`n-${h.dayNumber}`} className="text-center">{dailyTotals[h.dayNumber]?.N || 0}</TableCell>)}
-                </TableRow>}
+                {targetService?.habilitar_turno_noche && (
+                  <TableRow className="bg-muted font-semibold">
+                    <TableCell className="sticky left-0 bg-muted z-10 w-[180px] min-w-[180px]">Total Noche (N)</TableCell>
+                    <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]">&nbsp;</TableCell>
+                    {dayHeaders.map(h => (
+                      <TableCell key={`n-${h.dayNumber}`} className="text-center">
+                        {dailyTotals[h.dayNumber]?.N || 0}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                )}
                 <TableRow className="bg-muted font-bold text-base">
                   <TableCell className="sticky left-0 bg-muted z-10 w-[180px] min-w-[180px]">TOTAL PERSONAL</TableCell>
-                  <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]"></TableCell>
-                  {dayHeaders.map(h => <TableCell key={`staff-${h.dayNumber}`} className="text-center">{dailyTotals[h.dayNumber]?.totalStaff || 0}</TableCell>)}
+                  <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]">&nbsp;</TableCell>
+                  {dayHeaders.map(h => (
+                    <TableCell key={`staff-${h.dayNumber}`} className="text-center">
+                      {dailyTotals[h.dayNumber]?.totalStaff || 0}
+                    </TableCell>
+                  ))}
                 </TableRow>
               </TableFooter>
             </Table>

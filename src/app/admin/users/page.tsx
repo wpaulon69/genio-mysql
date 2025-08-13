@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { UserPlus, Search, Edit, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
-import { PERMISSIONS } from '@/lib/types/auth';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 import { useToast } from '@/hooks/use-toast';
 import SimpleUserForm from '@/components/admin/SimpleUserForm';
 

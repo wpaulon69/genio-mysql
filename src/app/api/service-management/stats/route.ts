@@ -59,22 +59,29 @@ export async function GET(request: NextRequest) {
       });
 
       // Verificar si hay horario activo para el mes actual
-      const [activeSchedule] = await connection.execute(`
-        SELECT COUNT(*) as count
-        FROM monthly_schedules 
-        WHERE service_id = ? 
-        AND YEAR(month_year) = ? 
-        AND MONTH(month_year) = ?
-      `, [serviceId, currentDate.getFullYear(), currentDate.getMonth() + 1]) as any;
+      let activeScheduleCount = 0;
+      try {
+        const [activeSchedule] = await connection.execute(`
+          SELECT COUNT(*) as count
+          FROM monthly_schedules 
+          WHERE service_id = ? 
+          AND YEAR(STR_TO_DATE(CONCAT(year, '-', month, '-01'), '%Y-%m-%d')) = ? 
+          AND MONTH(STR_TO_DATE(CONCAT(year, '-', month, '-01'), '%Y-%m-%d')) = ?
+        `, [serviceId, currentDate.getFullYear(), currentDate.getMonth() + 1]) as any;
+        activeScheduleCount = activeSchedule[0].count;
+      } catch (error) {
+        console.log('Warning: Could not check monthly schedules, table might not exist:', error);
+        activeScheduleCount = 0;
+      }
 
-      // Calcular cobertura (simulada por ahora)
-      // TODO: Implementar cálculo real basado en horarios y dotaciones
-      const coverage = Math.floor(Math.random() * 20) + 75; // 75-95%
+      // Calcular cobertura basada en empleados asignados vs disponibles
+      const totalEmployees = assignedEmployees[0].count + availableEmployees[0].count;
+      const coverage = totalEmployees > 0 ? Math.round((assignedEmployees[0].count / totalEmployees) * 100) : 0;
       const targetCoverage = 90;
 
       // Contar solicitudes pendientes (simulado por ahora)
       // TODO: Implementar tabla de solicitudes de cambios de turno
-      const pendingRequests = Math.floor(Math.random() * 5);
+      const pendingRequests = 0; // Simplificado por ahora
 
       const stats = {
         serviceName: serviceInfo[0].nombre_servicio,
@@ -84,7 +91,7 @@ export async function GET(request: NextRequest) {
         coverage: coverage,
         targetCoverage: targetCoverage,
         pendingRequests: pendingRequests,
-        activeSchedule: activeSchedule[0].count > 0
+        activeSchedule: activeScheduleCount > 0
       };
 
       return NextResponse.json(stats);

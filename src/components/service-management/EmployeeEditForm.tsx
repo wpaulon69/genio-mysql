@@ -67,12 +67,12 @@ export default function EmployeeEditForm({ employee, onSuccess, onCancel }: Empl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Error updating employee');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -221,10 +221,10 @@ export default function EmployeeEditForm({ employee, onSuccess, onCancel }: Empl
                   <FormItem>
                     <FormLabel>Disponibilidad General</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Ej: Disponible mañanas y tardes, no noches..."
                         rows={3}
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -239,10 +239,10 @@ export default function EmployeeEditForm({ employee, onSuccess, onCancel }: Empl
                   <FormItem>
                     <FormLabel>Restricciones Específicas</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Ej: No puede trabajar martes por estudios..."
                         rows={3}
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
