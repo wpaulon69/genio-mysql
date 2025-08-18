@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth/hooks';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import EmployeeManagementRoute from '@/components/auth/EmployeeManagementRoute';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import SimpleLogoutButton from '@/components/auth/SimpleLogoutButton';
 import PageHeader from '@/components/common/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,7 +135,7 @@ export default function ServiceEmployeesPage() {
 
   if (!user?.serviceId) {
     return (
-      <EmployeeManagementRoute>
+      <ProtectedRoute requiredPermissions={['manage_service_employees']}>
         <div className="container mx-auto">
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6">
@@ -145,12 +145,12 @@ export default function ServiceEmployeesPage() {
             </CardContent>
           </Card>
         </div>
-      </EmployeeManagementRoute>
+      </ProtectedRoute>
     );
   }
 
   return (
-    <EmployeeManagementRoute>
+    <ProtectedRoute requiredPermissions={['manage_service_employees']}>
       <div className="container mx-auto">
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center space-x-4">
@@ -333,6 +333,6 @@ export default function ServiceEmployeesPage() {
           />
         )}
       </div>
-    </EmployeeManagementRoute>
+    </ProtectedRoute>
   );
 }

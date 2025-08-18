@@ -1,7 +1,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import type { AuthSession, PermissionType } from '@/lib/types/auth';
+import type { PermissionType } from '@/lib/types/auth';
 import { hasPermission } from '@/lib/auth/permissions';
 
 /**
@@ -14,7 +14,7 @@ export function useAuth() {
     user: session?.user,
     isLoading: status === 'loading',
     isAuthenticated: status === 'authenticated',
-    session: session as AuthSession | null
+    session
   };
 }
 

@@ -336,7 +336,7 @@ export default function InteractiveScheduleGrid({
                   <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]">&nbsp;</TableCell>
                   {dayHeaders.map(h => (
                     <TableCell key={`m-${h.dayNumber}`} className="text-center">
-                      {dailyTotals[h.dayNumber]?.M || 0}
+                      {(dailyTotals && dailyTotals[h.dayNumber]?.M) || 0}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -345,7 +345,7 @@ export default function InteractiveScheduleGrid({
                   <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]">&nbsp;</TableCell>
                   {dayHeaders.map(h => (
                     <TableCell key={`t-${h.dayNumber}`} className="text-center">
-                      {dailyTotals[h.dayNumber]?.T || 0}
+                      {(dailyTotals && dailyTotals[h.dayNumber]?.T) || 0}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -355,7 +355,7 @@ export default function InteractiveScheduleGrid({
                     <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]">&nbsp;</TableCell>
                     {dayHeaders.map(h => (
                       <TableCell key={`n-${h.dayNumber}`} className="text-center">
-                        {dailyTotals[h.dayNumber]?.N || 0}
+                        {(dailyTotals && dailyTotals[h.dayNumber]?.N) || 0}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -365,7 +365,7 @@ export default function InteractiveScheduleGrid({
                   <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]">&nbsp;</TableCell>
                   {dayHeaders.map(h => (
                     <TableCell key={`staff-${h.dayNumber}`} className="text-center">
-                      {dailyTotals[h.dayNumber]?.totalStaff || 0}
+                      {(dailyTotals && dailyTotals[h.dayNumber]?.totalStaff) || 0}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -389,8 +389,18 @@ export default function InteractiveScheduleGrid({
 
       {!isReadOnly && (
         <div className="mt-6 flex justify-between">
-          <Button onClick={handleReevaluate} disabled={isEvaluating} variant="outline"><RefreshCw className={`mr-2 h-4 w-4 ${isEvaluating ? 'animate-spin' : ''}`} /> Re-evaluar</Button>
-          <Button onClick={() => setIsSaveModalOpen(true)} disabled={isSaving}>{isSaving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} {isSaving ? 'Guardando...' : 'Guardar Cambios'}</Button>
+          <Button onClick={handleReevaluate} disabled={isEvaluating} variant="outline">
+            <RefreshCw className={`mr-2 h-4 w-4 ${isEvaluating ? 'animate-spin' : ''}`} />
+            Re-evaluar
+          </Button>
+          <Button onClick={() => setIsSaveModalOpen(true)} disabled={isSaving}>
+            {isSaving ? (
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+          </Button>
         </div>
       )}
 

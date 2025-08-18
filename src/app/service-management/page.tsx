@@ -33,7 +33,17 @@ interface ServiceStats {
 }
 
 export default function ServiceManagementDashboard() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+
+  // Si está cargando la autenticación, mostrar loading
+  if (authLoading) {
+    return <div>Cargando...</div>;
+  }
+
+  // Si no hay usuario, no renderizar nada (ProtectedRoute se encargará)
+  if (!user) {
+    return null;
+  }
 
   // Fetch service statistics
   const { data: stats, isLoading, error } = useQuery({
@@ -46,7 +56,7 @@ export default function ServiceManagementDashboard() {
       }
       return response.json();
     },
-    enabled: !!user?.serviceId,
+    enabled: !!user?.serviceId && !authLoading,
     retry: 2,
     retryDelay: 1000
   });
@@ -75,9 +85,9 @@ export default function ServiceManagementDashboard() {
                 Tu usuario no tiene un servicio asignado. Contacta al administrador para que te asigne a un servicio específico.
               </p>
               <div className="bg-blue-50 p-3 rounded-md text-sm">
-                <p><strong>Usuario:</strong> {user.name}</p>
-                <p><strong>Rol:</strong> {user.role.displayName}</p>
-                <p><strong>Email:</strong> {user.email}</p>
+                <p><strong>Usuario:</strong> {user?.name || 'N/A'}</p>
+                <p><strong>Rol:</strong> {user?.role?.displayName || 'N/A'}</p>
+                <p><strong>Email:</strong> {user?.email || 'N/A'}</p>
               </div>
             </CardContent>
           </Card>

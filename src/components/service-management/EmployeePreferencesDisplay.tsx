@@ -39,13 +39,28 @@ export default function EmployeePreferencesDisplay({ month, year }: EmployeePref
   const { data: preferences, isLoading, error } = useQuery({
     queryKey: ['employee-preferences', month, year],
     queryFn: async () => {
+      console.log('🔍 [FRONTEND] Haciendo petición a preferencias:', { month, year });
       const response = await fetch(`/api/service-management/employees/preferences?month=${month}&year=${year}`);
+      
+      console.log('📡 [FRONTEND] Respuesta de API:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+      
       if (!response.ok) {
-        throw new Error('Error al cargar preferencias');
+        const errorText = await response.text();
+        console.error('❌ [FRONTEND] Error en API:', errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
       }
-      return response.json() as Promise<EmployeePreference[]>;
+      
+      const data = await response.json();
+      console.log('✅ [FRONTEND] Datos recibidos:', data);
+      return data as EmployeePreference[];
     },
-    enabled: !!(month && year) // Solo ejecutar si month y year están disponibles
+    enabled: !!(month && year), // Solo ejecutar si month y year están disponibles
+    retry: 1, // Solo reintentar una vez
+    retryDelay: 1000 // Esperar 1 segundo antes de reintentar
   });
 
   if (isLoading) {
@@ -65,6 +80,7 @@ export default function EmployeePreferencesDisplay({ month, year }: EmployeePref
   }
 
   if (error || !preferences) {
+    console.error('❌ [FRONTEND] Error en componente:', error);
     return (
       <Card>
         <CardHeader>
@@ -74,7 +90,26 @@ export default function EmployeePreferencesDisplay({ month, year }: EmployeePref
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-red-600">Error al cargar las preferencias de empleados</p>
+          <div className="space-y-2">
+            <p className="text-red-600">Error al cargar las preferencias de empleados</p>
+            {error && (
+              <details className="text-sm text-muted-foreground">
+                <summary className="cursor-pointer">Ver detalles del error</summary>
+                <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                  {error.message}
+                </pre>
+              </details>
+            )}
+            <div className="text-sm text-blue-600">
+              <p>💡 Posibles soluciones:</p>
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Verificar que tienes permisos para gestionar empleados</li>
+                <li>Verificar que tienes un servicio asignado</li>
+                <li>Revisar los logs del servidor (F12 → Console)</li>
+                <li>Contactar al administrador si el problema persiste</li>
+              </ul>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );

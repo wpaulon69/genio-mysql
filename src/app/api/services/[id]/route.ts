@@ -9,36 +9,57 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('🔍 API /services/[id] - Iniciando...');
+    
     const session = await getServerSession(authOptions);
+    console.log('🔍 API /services/[id] - Sesión obtenida:', !!session?.user);
     
     if (!session?.user) {
+      console.log('❌ API /services/[id] - No hay sesión');
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    if (!hasPermission(session.user, 'MANAGE_SERVICE_EMPLOYEES')) {
+    // Verificar permisos: Admin puede ver cualquier servicio, Jefe de servicio solo el suyo
+    console.log('🔍 API /services/[id] - Usuario completo:', JSON.stringify(session.user, null, 2));
+    console.log('🔍 API /services/[id] - Permisos del usuario:', session.user.permissions);
+    console.log('🔍 API /services/[id] - Rol del usuario:', session.user.role);
+    
+    const canManageAllServices = hasPermission(session.user, 'MANAGE_ALL_SERVICES');
+    const canManageOwnService = hasPermission(session.user, 'MANAGE_SERVICE_EMPLOYEES');
+    
+    console.log('🔍 API /services/[id] - Permisos calculados:', { canManageAllServices, canManageOwnService });
+    
+    if (!canManageAllServices && !canManageOwnService) {
+      console.log('❌ API /services/[id] - Sin permisos suficientes');
       return NextResponse.json({ error: 'Sin permisos suficientes' }, { status: 403 });
     }
 
     const { id } = await params;
     const serviceId = parseInt(id);
+    console.log('🔍 API /services/[id] - Service ID:', serviceId);
     
-    // Verificar que el usuario solo pueda acceder a su propio servicio
-    // Temporalmente comentado para debug
-    // if (session.user.serviceId !== serviceId) {
-    //   return NextResponse.json({ 
-    //     error: 'No tienes acceso a este servicio' 
-    //   }, { status: 403 });
-    // }
+    // Verificar que el usuario solo pueda acceder a su propio servicio (si no es admin)
+    if (!canManageAllServices && session.user.serviceId !== serviceId) {
+      console.log('❌ API /services/[id] - Sin acceso a este servicio específico');
+      return NextResponse.json({ 
+        error: 'No tienes acceso a este servicio' 
+      }, { status: 403 });
+    }
 
+    console.log('🔍 API /services/[id] - Obteniendo conexión a BD...');
     const connection = await getConnection();
+    console.log('🔍 API /services/[id] - Conexión obtenida');
     
     try {
+      console.log('🔍 API /services/[id] - Ejecutando query...');
       const [service] = await connection.execute(`
         SELECT 
           id_servicio,
           nombre_servicio,
           descripcion,
           habilitar_turno_noche,
+          targetCompleteWeekendsOff,
+          notas_adicionales,
           dotacion_objetivo_lunes_a_viernes_mananas,
           dotacion_objetivo_lunes_a_viernes_tardes,
           dotacion_objetivo_lunes_a_viernes_noche,
@@ -46,28 +67,33 @@ export async function GET(
           dotacion_objetivo_sab_dom_feriados_tardes,
           dotacion_objetivo_sab_dom_feriados_noche,
           max_dias_trabajo_consecutivos,
-          dias_trabajo_consecutivos_preferidos,
           max_descansos_consecutivos,
+          dias_trabajo_consecutivos_preferidos,
           dias_descanso_consecutivos_preferidos,
           min_descansos_requeridos_antes_de_trabajar,
-          fds_descanso_completo_objetivo,
-          notas_adicionales
+          fds_descanso_completo_objetivo
         FROM servicios 
         WHERE id_servicio = ?
       `, [serviceId]) as any;
 
+      console.log('🔍 API /services/[id] - Query ejecutada, resultados:', service.length);
+
       if (service.length === 0) {
+        console.log('❌ API /services/[id] - Servicio no encontrado');
         return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 });
       }
 
+      console.log('✅ API /services/[id] - Servicio encontrado:', service[0].nombre_servicio);
       return NextResponse.json(service[0]);
     } finally {
       connection.release();
     }
   } catch (error) {
-    console.error('Error fetching service:', error);
+    console.error('❌ API /services/[id] - Error completo:', error);
+    console.error('❌ API /services/[id] - Error message:', error.message);
+    console.error('❌ API /services/[id] - Error stack:', error.stack);
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: 'Error interno del servidor', details: error.message },
       { status: 500 }
     );
   }
@@ -84,7 +110,11 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    if (!hasPermission(session.user, 'MANAGE_SERVICE_EMPLOYEES')) {
+    // Verificar permisos: Admin puede editar cualquier servicio, Jefe de servicio solo el suyo
+    const canManageAllServices = hasPermission(session.user, 'manage_all_services');
+    const canManageOwnService = hasPermission(session.user, 'manage_service_employees');
+    
+    if (!canManageAllServices && !canManageOwnService) {
       return NextResponse.json({ error: 'Sin permisos suficientes' }, { status: 403 });
     }
 
@@ -92,13 +122,11 @@ export async function PUT(
     const serviceId = parseInt(id);
     const serviceData = await request.json();
     
-    // Verificar que el usuario solo pueda editar su propio servicio (o sea admin)
-    if (session.user.role.name !== 'ADMIN') {
-      if (!session.user.serviceId || session.user.serviceId !== serviceId) {
-        return NextResponse.json({ 
-          error: 'Sin permisos para editar este servicio' 
-        }, { status: 403 });
-      }
+    // Verificar que el usuario solo pueda editar su propio servicio (si no es admin)
+    if (!canManageAllServices && session.user.serviceId !== serviceId) {
+      return NextResponse.json({ 
+        error: 'Sin permisos para editar este servicio' 
+      }, { status: 403 });
     }
 
     const connection = await getConnection();
