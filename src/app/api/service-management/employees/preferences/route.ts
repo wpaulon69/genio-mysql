@@ -27,14 +27,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Sin permisos suficientes' }, { status: 403 });
     }
 
-    // Verificar serviceId - puede venir de session.user.serviceId o session.user.service_id
-    const serviceId = session.user.serviceId || session.user.service_id;
+    // Verificar serviceId - puede venir de parámetro (Admin Hospital) o sesión (Jefe Servicio)
+    const { searchParams } = new URL(request.url);
+    const serviceIdParam = searchParams.get('serviceId');
+    const serviceId = serviceIdParam || session.user.serviceId || session.user.service_id;
+    
     if (!serviceId) {
       console.log('❌ [PREFERENCES API] Usuario sin serviceId asignado');
       return NextResponse.json({ error: 'Usuario sin servicio asignado' }, { status: 400 });
     }
+    
+    console.log('🔍 [PREFERENCES API] ServiceId obtenido de:', serviceIdParam ? 'parámetro' : 'sesión');
 
-    const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
 
