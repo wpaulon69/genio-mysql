@@ -227,7 +227,7 @@ export default function SimpleUserForm({ user, onSuccess }: SimpleUserFormProps)
                     <option value="super_admin">🔧 Super Administrador - Acceso total al sistema</option>
                     <option value="admin_hospital">🏥 Admin Hospital - Gestión de todo el hospital</option>
                     <option value="jefe_servicio">👨‍⚕️ Jefe de Servicio - Gestión de UN servicio específico</option>
-                    <option value="supervisor">👷 Supervisor - Supervisión de turno</option>
+                    
                     <option value="empleado">👤 Empleado - Acceso básico personal</option>
                   </select>
                 </FormControl>

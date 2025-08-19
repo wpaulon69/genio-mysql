@@ -280,7 +280,7 @@ export default function InteractiveScheduleGrid({
             <Label htmlFor="schedule-name-input" className="text-sm font-medium text-muted-foreground">Nombre del Horario</Label>
             <Input id="schedule-name-input" type="text" value={scheduleName} onChange={e => { setScheduleName(e.target.value); if (onScheduleNameChange) onScheduleNameChange(e.target.value); setHasUnsavedChanges(true); }} placeholder={`Ej: Horario ${targetService?.nombre_servicio} - ${monthName} ${currentYearStr}`} className="text-lg font-headline mt-1" disabled={isReadOnly} />
             {!isReadOnly && (
-              <p className="text-sm text-muted-foreground">Puede editar los turnos manualmente. Use '-' para vaciar una celda.</p>
+              <p className="text-sm text-muted-foreground">Puede editar los turnos manualmente. Use &apos;-&apos; para vaciar una celda.</p>
             )}
           </div>
           {!isReadOnly && onBackToConfig && (
@@ -350,15 +350,17 @@ export default function InteractiveScheduleGrid({
                   ))}
                 </TableRow>
                 {targetService?.habilitar_turno_noche && (
-                  <TableRow className="bg-muted font-semibold">
-                    <TableCell className="sticky left-0 bg-muted z-10 w-[180px] min-w-[180px]">Total Noche (N)</TableCell>
-                    <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]">&nbsp;</TableCell>
-                    {dayHeaders.map(h => (
-                      <TableCell key={`n-${h.dayNumber}`} className="text-center">
-                        {(dailyTotals && dailyTotals[h.dayNumber]?.N) || 0}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+                  <React.Fragment>
+                    <TableRow className="bg-muted font-semibold">
+                      <TableCell className="sticky left-0 bg-muted z-10 w-[180px] min-w-[180px]">Total Noche (N)</TableCell>
+                      <TableCell className="sticky left-180 bg-muted z-10 w-[80px] min-w-[80px]">&nbsp;</TableCell>
+                      {dayHeaders.map(h => (
+                        <TableCell key={`n-${h.dayNumber}`} className="text-center">
+                          {(dailyTotals && dailyTotals[h.dayNumber]?.N) || 0}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </React.Fragment>
                 )}
                 <TableRow className="bg-muted font-bold text-base">
                   <TableCell className="sticky left-0 bg-muted z-10 w-[180px] min-w-[180px]">TOTAL PERSONAL</TableCell>

@@ -90,7 +90,7 @@ export default function SimpleTestPage() {
             ) : (
               <div className="p-4 bg-red-50 border border-red-200 rounded">
                 <p className="text-red-800">No shifts found or condition failed!</p>
-                <p className="text-xs">Condition: selectedSchedule.shifts && selectedSchedule.shifts.length > 0</p>
+                <p className="text-xs">Condition: {selectedSchedule.shifts && selectedSchedule.shifts.length > 0}</p>
                 <p className="text-xs">Result: {String(selectedSchedule.shifts && selectedSchedule.shifts.length > 0)}</p>
               </div>
             )}

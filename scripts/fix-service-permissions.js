@@ -157,29 +157,7 @@ async function fixServicePermissions() {
       }
     }
 
-    // Supervisor
-    const supervisorPermissions = [
-      'view_service_employees',
-      'view_service_schedules',
-      'view_own_service',
-      'view_own_profile'
-    ];
-
-    for (const permissionId of supervisorPermissions) {
-      const [existing] = await connection.execute(`
-        SELECT role_id FROM role_permissions 
-        WHERE role_id = 'supervisor' AND permission_id = ?
-      `, [permissionId]);
-
-      if (existing.length === 0) {
-        await connection.execute(`
-          INSERT INTO role_permissions (role_id, permission_id)
-          VALUES ('supervisor', ?)
-        `, [permissionId]);
-        
-        console.log(`✅ Asignado a supervisor: ${permissionId}`);
-      }
-    }
+    
 
     // Empleado
     const empleadoPermissions = [

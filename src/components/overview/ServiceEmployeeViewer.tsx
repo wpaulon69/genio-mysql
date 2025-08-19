@@ -227,7 +227,7 @@ export default function ServiceEmployeeViewer() {
                 <Users className="h-4 w-4" />
                 <AlertTitle>No Hay Empleados Asignados</AlertTitle>
                 <AlertDescription>
-                  Actualmente no hay empleados asignados al servicio de "{selectedService.nombre_servicio}".
+                  Actualmente no hay empleados asignados al servicio de &quot;{selectedService.nombre_servicio}&quot;.
                 </AlertDescription>
               </Alert>
             )}

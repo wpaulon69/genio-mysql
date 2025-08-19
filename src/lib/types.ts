@@ -2,6 +2,24 @@
  * @fileOverview Define todas las interfaces y tipos de datos TypeScript utilizados en la aplicación ShiftFlow.
  */
 
+export type UserRole = 'admin_hospital' | 'super_admin' | 'jefe_servicio' | 'empleado';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  username?: string;
+  hashedPassword?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  role: UserRole;
+  serviceId?: number;
+  employeeId?: number;
+  permissions: string[];
+  mustChangePassword?: boolean;
+}
+
 export interface Service {
   id_servicio: number;
   nombre_servicio: string;

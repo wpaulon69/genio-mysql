@@ -28,19 +28,9 @@ import { useToast } from '@/hooks/use-toast';
 import EmployeeEditForm from '@/components/service-management/EmployeeEditForm';
 import EmployeePreferencesForm from '@/components/employees/employee-preferences-form';
 import Link from 'next/link';
+import { Employee } from '@/lib/types';
 
-interface Employee {
-  id_empleado: number;
-  nombre: string;
-  email_empleado: string;
-  trabaja_feriados: boolean;
-  elegible_franco_pos_guardia: boolean;
-  prefiere_trabajar_fines_semana: boolean;
-  disponibilidad_general: string;
-  restricciones_especificas: string;
-  turnos_fijos?: any[];
-  asignaciones?: any[];
-}
+
 
 interface TipoAsignacion {
   id_tipo_asignacion: number;
@@ -135,7 +125,7 @@ export default function ServiceEmployeesPage() {
 
   if (!user?.serviceId) {
     return (
-      <ProtectedRoute requiredPermissions={['manage_service_employees']}>
+      <ProtectedRoute requiredPermissions={[PERMISSIONS.MANAGE_SERVICE_EMPLOYEES]}>
         <div className="container mx-auto">
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6">
@@ -150,7 +140,7 @@ export default function ServiceEmployeesPage() {
   }
 
   return (
-    <ProtectedRoute requiredPermissions={['manage_service_employees']}>
+    <ProtectedRoute requiredPermissions={[PERMISSIONS.MANAGE_SERVICE_EMPLOYEES]}>
       <div className="container mx-auto">
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center space-x-4">

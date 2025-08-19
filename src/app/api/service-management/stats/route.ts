@@ -44,12 +44,7 @@ export async function GET(request: NextRequest) {
         WHERE id_servicio = ?
       `, [serviceId]) as any;
 
-      // Contar empleados disponibles (sin servicio asignado)
-      const [availableEmployees] = await connection.execute(`
-        SELECT COUNT(*) as count
-        FROM empleados 
-        WHERE id_servicio IS NULL OR id_servicio = 0
-      `) as any;
+      
 
       // Obtener mes actual
       const currentDate = new Date();
@@ -63,10 +58,11 @@ export async function GET(request: NextRequest) {
       try {
         const [activeSchedule] = await connection.execute(`
           SELECT COUNT(*) as count
-          FROM monthly_schedules 
+          FROM horarios 
           WHERE service_id = ? 
           AND YEAR(STR_TO_DATE(CONCAT(year, '-', month, '-01'), '%Y-%m-%d')) = ? 
           AND MONTH(STR_TO_DATE(CONCAT(year, '-', month, '-01'), '%Y-%m-%d')) = ?
+          AND status = 'published'
         `, [serviceId, currentDate.getFullYear(), currentDate.getMonth() + 1]) as any;
         activeScheduleCount = activeSchedule[0].count;
       } catch (error) {
@@ -74,22 +70,11 @@ export async function GET(request: NextRequest) {
         activeScheduleCount = 0;
       }
 
-      // Calcular cobertura basada en empleados asignados vs disponibles
-      const totalEmployees = assignedEmployees[0].count + availableEmployees[0].count;
-      const coverage = totalEmployees > 0 ? Math.round((assignedEmployees[0].count / totalEmployees) * 100) : 0;
-      const targetCoverage = 90;
-
-      // Contar solicitudes pendientes (simulado por ahora)
-      // TODO: Implementar tabla de solicitudes de cambios de turno
-      const pendingRequests = 0; // Simplificado por ahora
-
+      let pendingRequests = 0; // TODO: Implement actual fetching of pending requests count
       const stats = {
         serviceName: serviceInfo[0].nombre_servicio,
         assignedEmployees: assignedEmployees[0].count,
-        availableEmployees: availableEmployees[0].count,
         currentMonth: currentMonth,
-        coverage: coverage,
-        targetCoverage: targetCoverage,
         pendingRequests: pendingRequests,
         activeSchedule: activeScheduleCount > 0
       };

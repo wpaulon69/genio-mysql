@@ -25,7 +25,7 @@ export default function ServiceList({ services, onEdit, onDelete, isLoading }: S
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            Aún no se han definido servicios. Haga clic en "Añadir Nuevo Servicio" para comenzar.
+            Aún no se han definido servicios. Haga clic en &quot;Añadir Nuevo Servicio&quot; para comenzar.
           </p>
         </CardContent>
       </Card>

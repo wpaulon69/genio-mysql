@@ -4,7 +4,7 @@
 -- Tabla de roles
 CREATE TABLE user_roles (
     id VARCHAR(50) PRIMARY KEY,
-    name ENUM('super_admin', 'admin_hospital', 'jefe_servicio', 'supervisor', 'empleado') NOT NULL UNIQUE,
+    name ENUM('super_admin', 'admin_hospital', 'jefe_servicio', 'empleado') NOT NULL UNIQUE,
     display_name VARCHAR(100) NOT NULL,
     level INT NOT NULL,
     description TEXT,
@@ -72,7 +72,6 @@ INSERT INTO user_roles (id, name, display_name, level, description) VALUES
 ('super_admin', 'super_admin', 'Super Administrador', 1, 'Acceso total al sistema'),
 ('admin_hospital', 'admin_hospital', 'Administrador Hospital', 2, 'Gestión completa del hospital'),
 ('jefe_servicio', 'jefe_servicio', 'Jefe de Servicio', 3, 'Gestión de un servicio específico'),
-('supervisor', 'supervisor', 'Supervisor', 4, 'Supervisión de equipo'),
 ('empleado', 'empleado', 'Empleado', 5, 'Acceso básico a información personal');
 
 -- Insertar permisos
@@ -141,14 +140,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 ('jefe_servicio', 'view_service_reports'),
 ('jefe_servicio', 'view_own_profile');
 
--- Supervisor: visualización y solicitudes
-INSERT INTO role_permissions (role_id, permission_id) VALUES
-('supervisor', 'view_own_service'),
-('supervisor', 'view_service_employees'),
-('supervisor', 'view_service_schedules'),
-('supervisor', 'request_shift_changes'),
-('supervisor', 'request_shift_exchange'),
-('supervisor', 'view_own_profile');
+
 
 -- Empleado: solo información personal
 INSERT INTO role_permissions (role_id, permission_id) VALUES

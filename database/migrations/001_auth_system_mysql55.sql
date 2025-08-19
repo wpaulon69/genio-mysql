@@ -16,7 +16,7 @@
 -- Tabla de roles de usuario
 CREATE TABLE IF NOT EXISTS user_roles (
     id VARCHAR(50) PRIMARY KEY,
-    name ENUM('super_admin', 'admin_hospital', 'jefe_servicio', 'supervisor', 'empleado') NOT NULL UNIQUE,
+    name ENUM('super_admin', 'admin_hospital', 'jefe_servicio', 'empleado') NOT NULL UNIQUE,
     display_name VARCHAR(100) NOT NULL,
     level INT NOT NULL,
     description TEXT,
@@ -95,7 +95,6 @@ INSERT IGNORE INTO user_roles (id, name, display_name, level, description) VALUE
 ('super_admin', 'super_admin', 'Super Administrador', 1, 'Acceso total al sistema - Desarrollo y configuración'),
 ('admin_hospital', 'admin_hospital', 'Administrador Hospital', 2, 'Gestión completa del hospital - Todos los servicios'),
 ('jefe_servicio', 'jefe_servicio', 'Jefe de Servicio', 3, 'Gestión de un servicio específico - Su equipo y horarios'),
-('supervisor', 'supervisor', 'Supervisor', 4, 'Supervisión de equipo - Visualización y solicitudes'),
 ('empleado', 'empleado', 'Empleado', 5, 'Acceso básico - Solo información personal');
 
 -- Insertar permisos del sistema
@@ -169,14 +168,7 @@ INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES
 ('jefe_servicio', 'request_shift_changes'),
 ('jefe_servicio', 'view_own_profile');
 
--- Supervisor: Visualización y solicitudes básicas
-INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES
-('supervisor', 'view_own_service'),
-('supervisor', 'view_service_employees'),
-('supervisor', 'view_service_schedules'),
-('supervisor', 'request_shift_changes'),
-('supervisor', 'request_shift_exchange'),
-('supervisor', 'view_own_profile');
+
 
 -- Empleado: Solo información personal y básica
 INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES

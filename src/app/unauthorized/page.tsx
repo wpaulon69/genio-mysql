@@ -47,8 +47,7 @@ export default function UnauthorizedPage() {
             </p>
             
             <div className="bg-blue-50 p-3 rounded-md text-sm">
-              <p className="font-medium text-blue-900">Tu supervisor directo</p>
-              <p className="text-blue-700">o</p>
+              
               <p className="font-medium text-blue-900">Administrador del sistema</p>
             </div>
           </div>

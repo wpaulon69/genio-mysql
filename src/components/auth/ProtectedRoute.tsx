@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth, usePermission, useRole } from '@/lib/auth/hooks';
-import { PermissionType } from '@/lib/types/auth';
+import { PermissionType, hasAllPermissions, hasAnyPermission } from '@/lib/auth/permissions';
 import { Loader2, ShieldX } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,9 @@ import Link from 'next/link';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   permission?: PermissionType;
-  role?: 'super_admin' | 'admin_hospital' | 'jefe_servicio' | 'supervisor' | 'empleado';
+  requiredPermissions?: PermissionType[];
+  anyPermission?: PermissionType[];
+  role?: 'super_admin' | 'admin_hospital' | 'jefe_servicio' | 'empleado';
   fallback?: React.ReactNode;
   showUnauthorized?: boolean;
 }
@@ -21,13 +23,35 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({
   children,
   permission,
+  requiredPermissions,
+  anyPermission,
   role,
   fallback,
   showUnauthorized = true
 }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const hasPermission = permission ? usePermission(permission) : true;
-  const hasRole = role ? useRole(role) : true;
+
+  // Handle single permission
+  const _hasSinglePermission = usePermission(permission);
+  const hasSinglePermission = permission ? _hasSinglePermission : true;
+
+  // Handle multiple required permissions (AND logic)
+  const _hasAllRequiredPermissions = requiredPermissions && user
+    ? hasAllPermissions(user, requiredPermissions)
+    : true;
+  const hasAllRequiredPermissions = requiredPermissions ? _hasAllRequiredPermissions : true;
+
+  // Handle any of the permissions (OR logic)
+  const _hasAnyOfPermissions = anyPermission && user
+    ? hasAnyPermission(user, anyPermission)
+    : true;
+  const hasAnyOfPermissions = anyPermission ? _hasAnyOfPermissions : true;
+
+  const _hasRole = useRole(role);
+  const hasRole = role ? _hasRole : true;
+
+  // Combine all permission checks
+  const hasAccess = hasSinglePermission && hasAllRequiredPermissions && hasAnyOfPermissions && hasRole;
 
   // Mostrar loading mientras se verifica la autenticación
   if (isLoading) {
@@ -64,8 +88,6 @@ export default function ProtectedRoute({
   }
 
   // Verificar permisos y roles
-  const hasAccess = hasPermission && hasRole;
-
   if (!hasAccess) {
     if (fallback) {
       return <>{fallback}</>;
@@ -92,6 +114,12 @@ export default function ProtectedRoute({
                 {permission && (
                   <p><strong>Permiso requerido:</strong> {permission}</p>
                 )}
+                {requiredPermissions && requiredPermissions.length > 0 && (
+                  <p><strong>Permisos requeridos (todos):</strong> {requiredPermissions.join(', ')}</p>
+                )}
+                {anyPermission && anyPermission.length > 0 && (
+                  <p><strong>Permisos requeridos (al menos uno):</strong> {anyPermission.join(', ')}</p>
+                )}
                 {role && (
                   <p><strong>Rol mínimo requerido:</strong> {role}</p>
                 )}
@@ -102,7 +130,7 @@ export default function ProtectedRoute({
                 <Link href="/">Volver al Inicio</Link>
               </Button>
               <p className="text-xs text-muted-foreground">
-                Contacta a tu supervisor si necesitas acceso.
+                Contacta a un administrador si necesitas acceso.
               </p>
             </div>
           </CardContent>
@@ -120,7 +148,7 @@ export default function ProtectedRoute({
 interface PermissionGateProps {
   children: React.ReactNode;
   permission?: PermissionType;
-  role?: 'super_admin' | 'admin_hospital' | 'jefe_servicio' | 'supervisor' | 'empleado';
+  role?: 'super_admin' | 'admin_hospital' | 'jefe_servicio' | 'empleado';
   fallback?: React.ReactNode;
 }
 
@@ -130,8 +158,10 @@ export function PermissionGate({
   role,
   fallback
 }: PermissionGateProps) {
-  const hasPermission = permission ? usePermission(permission) : true;
-  const hasRole = role ? useRole(role) : true;
+  const _hasPermission = usePermission(permission);
+  const hasPermission = permission ? _hasPermission : true;
+  const _hasRole = useRole(role);
+  const hasRole = role ? _hasRole : true;
   const hasAccess = hasPermission && hasRole;
 
   if (!hasAccess) {

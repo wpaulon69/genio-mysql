@@ -124,7 +124,7 @@ async function createDemoUsers() {
     console.log('   Super Admin: admin@shiftflow.com / ShiftFlow2025!');
     console.log('   Admin Hospital: admin.hospital@hospital.com / Hospital2025!');
     console.log('   Jefe Servicio: jefe.mucamas@hospital.com / Mucamas2025!');
-    console.log('   Supervisor: supervisor.cocina@hospital.com / Cocina2025!');
+    
     console.log('   Empleado: empleado.test@hospital.com / Empleado2025!');
     
   } catch (error) {

@@ -27,7 +27,7 @@ export default function HolidayList({ holidays, onEdit, onDelete, isLoading }: H
           </div>
           <CardTitle className="mt-4">No Se Encontraron Feriados</CardTitle>
           <CardDescription>
-            Aún no se han definido feriados. Haga clic en "Añadir Nuevo Feriado" para comenzar.
+            Aún no se han definido feriados. Haga clic en &quot;Añadir Nuevo Feriado&quot; para comenzar.
           </CardDescription>
         </CardHeader>
       </Card>

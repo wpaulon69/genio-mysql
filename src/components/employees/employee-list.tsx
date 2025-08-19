@@ -59,7 +59,7 @@ export default function EmployeeList({ employees, services, assignmentTypes, onE
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            Aún no se han definido empleados. Haga clic en "Añadir Nuevo Empleado" para comenzar.
+            Aún no se han definido empleados. Haga clic en &quot;Añadir Nuevo Empleado&quot; para comenzar.
           </p>
         </CardContent>
       </Card>

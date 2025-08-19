@@ -16,7 +16,7 @@ export interface User {
 
 export interface UserRole {
   id: string;
-  name: 'super_admin' | 'admin_hospital' | 'jefe_servicio' | 'supervisor' | 'empleado';
+  name: 'super_admin' | 'admin_hospital' | 'jefe_servicio' | 'empleado';
   displayName: string;
   level: number;
   permissions: string[];
@@ -126,20 +126,7 @@ export const ROLES = {
       PERMISSIONS.VIEW_OWN_PROFILE
     ]
   },
-  SUPERVISOR: {
-    id: 'supervisor',
-    name: 'supervisor' as const,
-    displayName: 'Supervisor',
-    level: 4,
-    permissions: [
-      PERMISSIONS.VIEW_OWN_SERVICE,
-      PERMISSIONS.VIEW_SERVICE_EMPLOYEES,
-      PERMISSIONS.VIEW_SERVICE_SCHEDULES,
-      PERMISSIONS.REQUEST_SHIFT_CHANGES,
-      PERMISSIONS.REQUEST_SHIFT_EXCHANGE,
-      PERMISSIONS.VIEW_OWN_PROFILE
-    ]
-  },
+  
   EMPLEADO: {
     id: 'empleado',
     name: 'empleado' as const,

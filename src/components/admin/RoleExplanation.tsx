@@ -47,20 +47,7 @@ const roleExplanations = {
     ],
     example: 'Jefe de Mucamas, Jefe de Cocina, Jefe de Enfermería'
   },
-  supervisor: {
-    title: 'Supervisor',
-    level: 4,
-    icon: Eye,
-    color: 'bg-yellow-500',
-    description: 'Supervisor de turno o encargado de área',
-    permissions: [
-      'Ver información de su servicio',
-      'Solicitar cambios de turno',
-      'Solicitar intercambios',
-      'NO puede aprobar cambios'
-    ],
-    example: 'Supervisor de turno noche'
-  },
+  
   empleado: {
     title: 'Empleado',
     level: 5,
@@ -150,8 +137,8 @@ export default function RoleExplanation({ roleId, showAll = false }: RoleExplana
           <CardContent className="pt-6">
             <h4 className="font-medium mb-2">💡 Ejemplo de Flujo:</h4>
             <div className="text-sm space-y-1">
-              <p>1. <strong>Admin Hospital</strong> crea el servicio "Mucamas"</p>
-              <p>2. <strong>Admin Hospital</strong> crea usuario "Jefe de Mucamas"</p>
+              <p>1. <strong>Admin Hospital</strong> crea el servicio &quot;Mucamas&quot;</p>
+              <p>2. <strong>Admin Hospital</strong> crea usuario &quot;Jefe de Mucamas&quot;</p>
               <p>3. <strong>Jefe de Mucamas</strong> gestiona solo empleados de mucamas</p>
               <p>4. <strong>Empleados</strong> ven solo su horario personal</p>
             </div>

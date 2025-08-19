@@ -48,13 +48,15 @@ export default function UnifiedScheduleManager({
   
   const [selectedYearView, setSelectedYearView] = useState<string>(currentYear.toString());
   const [selectedMonthView, setSelectedMonthView] = useState<string>((new Date().getMonth() + 1).toString());
-  const [selectedServiceIdView, setSelectedServiceIdView] = useState<string | undefined>(undefined);
-  const [selectedScheduleToDisplay, setSelectedScheduleToDisplay] = useState<MonthlySchedule | null>(null);
-  const [scheduleToEdit, setScheduleToEdit] = useState<MonthlySchedule | null>(null);
-
   // Determinar si es jefe de servicio (solo puede ver su servicio)
   const isJefeServicio = user?.role?.name === 'jefe_servicio';
   const canManageAllServices = user ? hasPermission(user, PERMISSIONS.MANAGE_ALL_SERVICES) : false;
+
+  const [selectedServiceIdView, setSelectedServiceIdView] = useState<string | undefined>(
+    isJefeServicio && !canManageAllServices ? user?.serviceId?.toString() : undefined
+  );
+  const [selectedScheduleToDisplay, setSelectedScheduleToDisplay] = useState<MonthlySchedule | null>(null);
+  const [scheduleToEdit, setScheduleToEdit] = useState<MonthlySchedule | null>(null);
 
   // Fetch services (solo si puede gestionar todos los servicios)
   const { data: services = [], isLoading: isLoadingServices } = useQuery<Service[]>({
@@ -325,7 +327,7 @@ export default function UnifiedScheduleManager({
                   <div className="text-center text-muted-foreground">
                     <Info className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No hay horarios disponibles para el período seleccionado</p>
-                    <p className="text-sm mt-2">Usa la pestaña "Generar Horario" para crear uno nuevo</p>
+                    <p className="text-sm mt-2">Usa la pestaña &quot;Generar Horario&quot; para crear uno nuevo</p>
                   </div>
                 </CardContent>
               </Card>
@@ -359,7 +361,7 @@ export default function UnifiedScheduleManager({
                     {selectedScheduleToDisplay.horario_nombre || `Horario ${selectedScheduleToDisplay.id}`}
                   </CardTitle>
                   <CardDescription>
-                    Vista de solo lectura - Usa el botón "Editar" para hacer cambios
+                    Vista de solo lectura - Usa el botón &quot;Editar&quot; para hacer cambios
                   </CardDescription>
                   <div className="flex gap-2">
                     <Button
@@ -383,7 +385,7 @@ export default function UnifiedScheduleManager({
                   <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                     <p className="text-sm text-blue-700 flex items-center">
                       <Eye className="mr-2 h-4 w-4" />
-                      <strong>Modo Solo Lectura:</strong> Esta vista es solo para consulta. Para hacer cambios, usa el botón "Editar".
+                      <strong>Modo Solo Lectura:</strong> Esta vista es solo para consulta. Para hacer cambios, usa el botón &quot;Editar&quot;.
                     </p>
                   </div>
                   <InteractiveScheduleGrid

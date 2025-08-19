@@ -47,7 +47,7 @@ export function usePermissions(permissions: PermissionType[], requireAll = false
 /**
  * Hook para verificar si el usuario tiene un rol específico o superior
  */
-export function useRole(minRole: 'super_admin' | 'admin_hospital' | 'jefe_servicio' | 'supervisor' | 'empleado') {
+export function useRole(minRole: 'super_admin' | 'admin_hospital' | 'jefe_servicio' | 'empleado') {
   const { user } = useAuth();
   
   if (!user) return false;
@@ -56,7 +56,6 @@ export function useRole(minRole: 'super_admin' | 'admin_hospital' | 'jefe_servic
     'super_admin': 1,
     'admin_hospital': 2,
     'jefe_servicio': 3,
-    'supervisor': 4,
     'empleado': 5
   };
   
@@ -134,7 +133,7 @@ export function useEmployeeAccess(employeeId: number) {
     return user.employeeId === employeeId;
   }
   
-  // Jefe de servicio y supervisor pueden acceder a empleados de su servicio
+  // Jefe de servicio puede acceder a empleados de su servicio
   // Esto requeriría una consulta adicional para verificar el servicio del empleado
   return true; // Simplificado por ahora
 }

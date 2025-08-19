@@ -39,7 +39,6 @@ CREATE TABLE IF NOT EXISTS user_roles (
         'super_admin',
         'admin_hospital',
         'jefe_servicio',
-        'supervisor',
         'empleado'
     ) NOT NULL UNIQUE,
     display_name VARCHAR(100) NOT NULL,
@@ -144,13 +143,6 @@ VALUES (
         'Jefe de Servicio',
         3,
         'Gestión de un servicio específico - Su equipo y horarios'
-    ),
-    (
-        'supervisor',
-        'supervisor',
-        'Supervisor',
-        4,
-        'Supervisión de equipo - Visualización y solicitudes'
     ),
     (
         'empleado',
@@ -439,32 +431,7 @@ VALUES (
     );
 
 -- Supervisor: Visualización y solicitudes básicas
-INSERT IGNORE INTO
-    role_permissions (role_id, permission_id)
-VALUES (
-        'supervisor',
-        'view_own_service'
-    ),
-    (
-        'supervisor',
-        'view_service_employees'
-    ),
-    (
-        'supervisor',
-        'view_service_schedules'
-    ),
-    (
-        'supervisor',
-        'request_shift_changes'
-    ),
-    (
-        'supervisor',
-        'request_shift_exchange'
-    ),
-    (
-        'supervisor',
-        'view_own_profile'
-    );
+
 
 -- Empleado: Solo información personal y básica
 INSERT IGNORE INTO

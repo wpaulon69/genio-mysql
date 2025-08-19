@@ -32,8 +32,11 @@ export const PERMISSIONS = {
   APPROVE_SHIFT_CHANGES: 'APPROVE_SHIFT_CHANGES',
   
   // Perfil personal
+  // Perfil personal
   VIEW_OWN_PROFILE: 'VIEW_OWN_PROFILE'
 } as const;
+
+export type PermissionType = typeof PERMISSIONS[keyof typeof PERMISSIONS];
 
 // Mapeo de permisos por rol
 export const ROLE_PERMISSIONS = {
@@ -72,12 +75,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.APPROVE_SHIFT_CHANGES,
     PERMISSIONS.VIEW_OWN_PROFILE
   ],
-  supervisor: [
-    PERMISSIONS.VIEW_SERVICE_EMPLOYEES,
-    PERMISSIONS.VIEW_SERVICE_SCHEDULES,
-    PERMISSIONS.VIEW_OWN_SERVICE,
-    PERMISSIONS.VIEW_OWN_PROFILE
-  ],
+  
   empleado: [
     PERMISSIONS.VIEW_OWN_PROFILE
   ]

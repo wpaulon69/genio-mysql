@@ -49,9 +49,7 @@ async function setupAllRolePermissions() {
         'view_service_schedules', 'manage_own_service', 'view_own_service',
         'view_service_reports', 'approve_shift_changes', 'view_own_profile'
       ],
-      supervisor: [
-        'view_service_employees', 'view_service_schedules', 'view_own_service', 'view_own_profile'
-      ],
+      
       empleado: [
         'view_own_profile'
       ]

@@ -25,7 +25,7 @@ export async function GET(
     console.log('🔍 API /services/[id] - Rol del usuario:', session.user.role);
     
     const canManageAllServices = hasPermission(session.user, 'MANAGE_ALL_SERVICES');
-    const canManageOwnService = hasPermission(session.user, 'MANAGE_SERVICE_EMPLOYEES');
+    const canManageOwnService = hasPermission(session.user, 'MANAGE_OWN_SERVICE');
     
     console.log('🔍 API /services/[id] - Permisos calculados:', { canManageAllServices, canManageOwnService });
     
@@ -111,8 +111,8 @@ export async function PUT(
     }
 
     // Verificar permisos: Admin puede editar cualquier servicio, Jefe de servicio solo el suyo
-    const canManageAllServices = hasPermission(session.user, 'manage_all_services');
-    const canManageOwnService = hasPermission(session.user, 'manage_service_employees');
+    const canManageAllServices = hasPermission(session.user, 'MANAGE_ALL_SERVICES');
+    const canManageOwnService = hasPermission(session.user, 'MANAGE_OWN_SERVICE');
     
     if (!canManageAllServices && !canManageOwnService) {
       return NextResponse.json({ error: 'Sin permisos suficientes' }, { status: 403 });
@@ -133,8 +133,8 @@ export async function PUT(
     
     try {
       await connection.execute(`
-        UPDATE servicios SET
-          nombre_servicio = ?, descripcion = ?, habilitar_turno_noche = ?,
+                  UPDATE servicios SET
+          nombre_servicio = ?, descripcion = ?, habilitar_turno_noche = ?, targetCompleteWeekendsOff = ?,
           dotacion_objetivo_lunes_a_viernes_mananas = ?, dotacion_objetivo_lunes_a_viernes_tardes = ?, dotacion_objetivo_lunes_a_viernes_noche = ?,
           dotacion_objetivo_sab_dom_feriados_mananas = ?, dotacion_objetivo_sab_dom_feriados_tardes = ?, dotacion_objetivo_sab_dom_feriados_noche = ?,
           max_dias_trabajo_consecutivos = ?, dias_trabajo_consecutivos_preferidos = ?, max_descansos_consecutivos = ?,
@@ -145,6 +145,7 @@ export async function PUT(
         serviceData.nombre_servicio,
         serviceData.descripcion || null,
         serviceData.habilitar_turno_noche ? 1 : 0,
+        serviceData.targetCompleteWeekendsOff || 0,
         serviceData.dotacion_objetivo_lunes_a_viernes_mananas || 0,
         serviceData.dotacion_objetivo_lunes_a_viernes_tardes || 0,
         serviceData.dotacion_objetivo_lunes_a_viernes_noche || 0,

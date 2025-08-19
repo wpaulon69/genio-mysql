@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { UsersRound, BriefcaseMedical, CalendarDays, LineChart, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth/hooks';
 import React, { useState, useEffect } from 'react'; // Importar useState y useEffect
 
 /**
@@ -25,6 +27,8 @@ import React, { useState, useEffect } from 'react'; // Importar useState y useEf
  */
 export default function DashboardPage() {
   const [greeting, setGreeting] = useState('');
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuth(); // Get user, isAuthenticated, isLoading from useAuth
 
   useEffect(() => {
     const currentHour = new Date().getHours();
@@ -35,7 +39,14 @@ export default function DashboardPage() {
     } else {
       setGreeting("¡Buenas noches! Que la planificación te acompañe. 🌙");
     }
-  }, []); // El array vacío asegura que se ejecute solo una vez en el cliente
+  }, []);
+
+  // Add new useEffect for redirection
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user?.role?.name === 'jefe_servicio') {
+      router.replace('/service-management'); // Use replace to prevent going back to dashboard
+    }
+  }, [isLoading, isAuthenticated, user, router]); // Dependencies for the effect
 
 
   /**

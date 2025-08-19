@@ -168,13 +168,7 @@ async function createTestUsers() {
         role: 'jefe_servicio',
         serviceId: 1
       },
-      {
-        email: 'supervisor.test@hospital.com',
-        name: 'Supervisor Test',
-        password: 'Supervisor2025!',
-        role: 'supervisor',
-        serviceId: 1
-      },
+      
       {
         email: 'empleado.test@hospital.com',
         name: 'Empleado Test',

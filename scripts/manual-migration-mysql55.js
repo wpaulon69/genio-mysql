@@ -130,8 +130,7 @@ async function manualMigration() {
       ['super_admin', 'super_admin', 'Super Administrador', 1, 'Acceso total al sistema'],
       ['admin_hospital', 'admin_hospital', 'Administrador Hospital', 2, 'Gestión completa del hospital'],
       ['jefe_servicio', 'jefe_servicio', 'Jefe de Servicio', 3, 'Gestión de un servicio específico'],
-      ['supervisor', 'supervisor', 'Supervisor', 4, 'Supervisión de equipo'],
-      ['empleado', 'empleado', 'Empleado', 5, 'Acceso básico']
+      ['empleado', 'empleado', 'Empleado', 4, 'Acceso básico']
     ];
     
     for (const role of roles) {

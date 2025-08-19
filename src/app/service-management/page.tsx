@@ -24,26 +24,13 @@ import Link from 'next/link';
 interface ServiceStats {
   serviceName: string;
   assignedEmployees: number;
-  availableEmployees: number;
   currentMonth: string;
-  coverage: number;
-  targetCoverage: number;
   pendingRequests: number;
   activeSchedule: boolean;
 }
 
 export default function ServiceManagementDashboard() {
   const { user, isLoading: authLoading } = useAuth();
-
-  // Si está cargando la autenticación, mostrar loading
-  if (authLoading) {
-    return <div>Cargando...</div>;
-  }
-
-  // Si no hay usuario, no renderizar nada (ProtectedRoute se encargará)
-  if (!user) {
-    return null;
-  }
 
   // Fetch service statistics
   const { data: stats, isLoading, error } = useQuery({
@@ -60,6 +47,16 @@ export default function ServiceManagementDashboard() {
     retry: 2,
     retryDelay: 1000
   });
+
+  // Si está cargando la autenticación, mostrar loading
+  if (authLoading) {
+    return <div>Cargando...</div>;
+  }
+
+  // Si no hay usuario, no renderizar nada (ProtectedRoute se encargará)
+  if (!user) {
+    return null;
+  }
 
   if (!user?.serviceId) {
     return (
@@ -143,16 +140,6 @@ export default function ServiceManagementDashboard() {
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">{stats.assignedEmployees}</div>
                   <div className="text-sm text-muted-foreground">Empleados Asignados</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{stats.availableEmployees}</div>
-                  <div className="text-sm text-muted-foreground">Disponibles para Asignar</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{stats.coverage}%</div>
-                  <div className="text-sm text-muted-foreground">
-                    Cobertura (Objetivo: {stats.targetCoverage}%)
-                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-orange-600">{stats.pendingRequests}</div>
@@ -256,12 +243,6 @@ export default function ServiceManagementDashboard() {
                   <span className="text-sm">Mes Actual:</span>
                   <Badge variant="outline">{stats?.currentMonth || "N/A"}</Badge>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Cobertura:</span>
-                  <Badge variant={stats?.coverage >= stats?.targetCoverage ? "default" : "destructive"}>
-                    {stats?.coverage || 0}%
-                  </Badge>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -275,25 +256,13 @@ export default function ServiceManagementDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {stats?.availableEmployees > 0 && (
-                  <div className="flex items-center text-sm text-blue-600">
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    {stats.availableEmployees} empleados disponibles para asignar
-                  </div>
-                )}
                 {stats?.pendingRequests > 0 && (
                   <div className="flex items-center text-sm text-orange-600">
                     <ClipboardList className="mr-2 h-4 w-4" />
                     {stats.pendingRequests} solicitudes pendientes de revisión
                   </div>
                 )}
-                {stats?.coverage < stats?.targetCoverage && (
-                  <div className="flex items-center text-sm text-red-600">
-                    <AlertCircle className="mr-2 h-4 w-4" />
-                    Cobertura por debajo del objetivo
-                  </div>
-                )}
-                {(!stats?.availableEmployees && !stats?.pendingRequests && stats?.coverage >= stats?.targetCoverage) && (
+                {(!stats?.pendingRequests && stats?.activeSchedule) && (
                   <div className="flex items-center text-sm text-green-600">
                     <TrendingUp className="mr-2 h-4 w-4" />
                     Todo funcionando correctamente

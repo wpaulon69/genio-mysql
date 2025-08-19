@@ -48,7 +48,7 @@ Este es un sistema de gestión de horarios para un **hospital**, donde se organi
   - Solicitar intercambios con otros empleados
   - **NO puede aprobar cambios**
 
-### 5. 👤 **Empleado** (Nivel 5)
+### 4. 👤 **Empleado** (Nivel 4)
 - **Quién es**: Empleado regular (mucama, cocinero, etc.)
 - **Acceso**: Solo su información personal
 - **Responsabilidades**:
