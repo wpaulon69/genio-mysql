@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Shield, Search, Edit, Trash2, Plus, Users, Settings } from 'lucide-react';
-import { PERMISSIONS } from '@/lib/auth/permissions';
+import * as AuthPermissions from '@/lib/auth/permissions';
 import { useToast } from '@/hooks/use-toast';
 import RoleForm from '@/components/admin/RoleForm';
 import RoleExplanation from '@/components/admin/RoleExplanation';
@@ -115,7 +115,7 @@ export default function RolesPage() {
   };
 
   return (
-    <ProtectedRoute permission={PERMISSIONS.SYSTEM_SETTINGS}>
+    <ProtectedRoute permission={AuthPermissions.PERMISSIONS.SYSTEM_SETTINGS}>
       <div className="container mx-auto">
         <div className="flex justify-between items-start mb-6">
           <PageHeader

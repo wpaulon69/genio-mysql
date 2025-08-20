@@ -208,7 +208,7 @@ export default function ServiceEmployeeViewer() {
                         )}
                       </div>
                     </div>
-                    {hasPermission(user, 'MANAGE_ALL_EMPLOYEES') && (
+                    {user && hasPermission(user, 'MANAGE_ALL_EMPLOYEES') && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -235,7 +235,7 @@ export default function ServiceEmployeeViewer() {
         )}
 
         {/* Empleados sin asignar - solo para administradores */}
-        {hasPermission(user, 'MANAGE_ALL_EMPLOYEES') && selectedServiceId && (
+        {user && hasPermission(user, 'MANAGE_ALL_EMPLOYEES') && selectedServiceId && (
           <div className="mt-8">
             <h3 className="text-xl font-semibold mb-3">
               Empleados Sin Asignar ({unassignedEmployees.length})

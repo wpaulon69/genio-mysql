@@ -6,7 +6,7 @@ import PageHeader from '@/components/common/page-header';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import ServiceList from '@/components/services/service-list';
-import ServiceForm from '@/components/services/service-form';
+import ServiceConfigurationForm from '@/components/service-management/ServiceConfigurationForm';
 import type { Service } from '@/lib/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -77,7 +77,7 @@ export default function ServicesPage() {
   /** Mutación para actualizar un servicio existente. */
   const updateServiceMutation = useMutation({
     mutationFn: async (service: Service) => {
-      const response = await fetch('/api/services', {
+      const response = await fetch(`/api/services/${service.id_servicio}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(service),
@@ -195,7 +195,7 @@ export default function ServicesPage() {
         onDelete={handleDeleteService}
         isLoading={deleteServiceMutation.isPending}
       />
-      <ServiceForm
+      <ServiceConfigurationForm
         isOpen={isFormOpen}
         onClose={() => { setIsFormOpen(false); setEditingService(null); }}
         onSubmit={handleFormSubmit}

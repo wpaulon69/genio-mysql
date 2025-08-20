@@ -124,7 +124,7 @@ export default function ReportsClient({ services, employees, holidays }: Reports
         setProcessingError(e instanceof Error ? e.message : "Ocurrió un error desconocido durante la generación del informe.");
       }
     } else {
-      setProcessingError(`El tipo de informe "${filters.reportType}" aún no está implementado.`);
+      setProcessingError(`El tipo de informe '${filters.reportType}' aún no está implementado.`);
     }
     setIsProcessing(false);
   };
@@ -169,7 +169,7 @@ export default function ReportsClient({ services, employees, holidays }: Reports
           {!isProcessing && !processingError && !employeeComparisonOutput && !scheduleQualityOutput && !scheduleComparisonOutput && (
              <Alert>
               <AlertTitle>Ningún Informe Generado</AlertTitle>
-              <AlertDescription>Seleccione el tipo de informe y los parámetros, luego haga clic en "Generar Informe".</AlertDescription>
+              <AlertDescription>Seleccione el tipo de informe y los parámetros, luego haga clic en &apos;Generar Informe&apos;.</AlertDescription>
             </Alert>
           )}
         </div>

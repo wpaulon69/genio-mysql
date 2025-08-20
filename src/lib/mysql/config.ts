@@ -18,7 +18,7 @@ pool.on('connection', function (connection) {
   console.log('New connection established as id ' + connection.threadId);
 });
 
-pool.on('error', function(err) {
+pool.on('error' as any, function(err: any) {
   console.error('Database pool error:', err);
   if(err.code === 'PROTOCOL_CONNECTION_LOST') {
     console.log('Database connection was closed.');

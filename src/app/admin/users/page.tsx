@@ -12,25 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { UserPlus, Search, Edit, Trash2, Shield, Eye, EyeOff } from 'lucide-react';
-import { PERMISSIONS } from '@/lib/auth/permissions';
+import * as AuthPermissions from '@/lib/auth/permissions';
 import { useToast } from '@/hooks/use-toast';
 import SimpleUserForm from '@/components/admin/SimpleUserForm';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: {
-    id: string;
-    displayName: string;
-    level: number;
-  };
-  serviceName?: string;
-  employeeName?: string;
-  isActive: boolean;
-  lastLogin?: string;
-  createdAt: string;
-}
+import { User } from '@/lib/types';
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -115,7 +101,7 @@ export default function UsersPage() {
   };
 
   return (
-    <ProtectedRoute permission={PERMISSIONS.MANAGE_USERS}>
+    <ProtectedRoute permission={AuthPermissions.PERMISSIONS.MANAGE_USERS}>
       <div className="container mx-auto">
         <div className="flex justify-between items-start mb-6">
           <PageHeader
@@ -193,7 +179,7 @@ export default function UsersPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.role.level === 1 ? 'destructive' : 'secondary'}>
+                        <Badge variant={user.role.name === 'super_admin' ? 'destructive' : 'secondary'}>
                           {user.role.displayName}
                         </Badge>
                       </TableCell>
@@ -241,7 +227,7 @@ export default function UsersPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteUser(user)}
-                            disabled={user.role.level === 1} // No eliminar super admin
+                            disabled={user.role.name === 'super_admin'} // No eliminar super admin
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

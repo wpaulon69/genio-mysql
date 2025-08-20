@@ -4,13 +4,13 @@ import { authOptions } from '@/lib/auth/config';
 import { getAllUsers, createUser, getUserRoles } from '@/lib/mysql/users';
 import { getServices } from '@/lib/mysql/services';
 import { getEmployees } from '@/lib/mysql/employees';
-import { PERMISSIONS } from '@/lib/auth/permissions';
+import * as AuthPermissions from '@/lib/auth/permissions';
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user || !session.user.permissions.includes(PERMISSIONS.MANAGE_USERS)) {
+    if (!session?.user || !session.user.permissions.includes(AuthPermissions.PERMISSIONS.MANAGE_USERS)) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user || !session.user.permissions.includes(PERMISSIONS.MANAGE_USERS)) {
+    if (!session?.user || !session.user.permissions.includes(AuthPermissions.PERMISSIONS.MANAGE_USERS)) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 

@@ -4,6 +4,40 @@ import { authOptions } from '@/lib/auth/config';
 import { hasPermission, getUserPermissions } from '@/lib/auth/permissions';
 import { getConnection } from '@/lib/mysql/config';
 
+interface RawEmployee {
+  id_empleado: number;
+  nombre: string;
+  email_empleado: string;
+  trabaja_feriados: number;
+  elegible_franco_pos_guardia: number;
+  prefiere_trabajar_fines_semana: number;
+  disponibilidad_general: string | null;
+  restricciones_especificas: string | null;
+}
+
+interface RawTurnoFijo {
+  id_empleado: number;
+  dia_semana: string;
+  tipo_turno: string;
+}
+
+interface RawAsignacion {
+  id_empleado: number;
+  id_tipo_asignacion: number;
+  tipo_asignacion: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  descripcion: string | null;
+}
+
+interface RawAdditionalPreference {
+  employeeId: number;
+  elegible_franco_pos_guardia_adicional: number;
+  prefiere_trabajar_fines_semana_adicional: number;
+  fixedWeeklyShiftTiming: string | null;
+  workPattern: string | null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 [PREFERENCES API] Iniciando petición...');
@@ -16,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     console.log('👤 [PREFERENCES API] Usuario:', {
       id: session.user.id,
-      username: session.user.username,
+      name: session.user.name,
       role: session.user.role?.name,
       serviceId: session.user.serviceId
     });
@@ -30,7 +64,7 @@ export async function GET(request: NextRequest) {
     // Verificar serviceId - puede venir de parámetro (Admin Hospital) o sesión (Jefe Servicio)
     const { searchParams } = new URL(request.url);
     const serviceIdParam = searchParams.get('serviceId');
-    const serviceId = serviceIdParam || session.user.serviceId || session.user.service_id;
+    const serviceId = serviceIdParam || session.user.serviceId;
     
     if (!serviceId) {
       console.log('❌ [PREFERENCES API] Usuario sin serviceId asignado');
@@ -138,8 +172,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Organizar los datos combinando empleados con sus preferencias y datos adicionales
-      const employeesWithPreferences = employees.map(emp => {
-        const preferenciaAdicional = preferenciasAdicionales.find(p => p.id_empleado === emp.id_empleado);
+      const employeesWithPreferences = employees.map((emp: RawEmployee) => {
+        const preferenciaAdicional = preferenciasAdicionales.find((p: RawAdditionalPreference) => p.employeeId === emp.id_empleado);
         
         return {
           id_empleado: emp.id_empleado,
@@ -155,8 +189,8 @@ export async function GET(request: NextRequest) {
           workPattern: preferenciaAdicional?.workPattern || null,
           mes: parseInt(month),
           anio: parseInt(year),
-          turnos_fijos: turnosFijos.filter(tf => tf.id_empleado === emp.id_empleado),
-          asignaciones: asignaciones.filter(a => a.id_empleado === emp.id_empleado)
+          turnos_fijos: turnosFijos.filter((tf: RawTurnoFijo) => tf.id_empleado === emp.id_empleado),
+          asignaciones: asignaciones.filter((a: RawAsignacion) => a.id_empleado === emp.id_empleado)
         };
       });
 

@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, User, Mail, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Employee } from '@/lib/types';
 
 const employeeSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
@@ -20,22 +21,11 @@ const employeeSchema = z.object({
   trabaja_feriados: z.boolean(),
   elegible_franco_pos_guardia: z.boolean(),
   prefiere_trabajar_fines_semana: z.boolean(),
-  disponibilidad_general: z.string().optional(),
-  restricciones_especificas: z.string().optional()
+  disponibilidad_general: z.string().nullable().optional(),
+  restricciones_especificas: z.string().nullable().optional()
 });
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
-
-interface Employee {
-  id_empleado: number;
-  nombre: string;
-  email_empleado: string;
-  trabaja_feriados: boolean;
-  elegible_franco_pos_guardia: boolean;
-  prefiere_trabajar_fines_semana: boolean;
-  disponibilidad_general: string;
-  restricciones_especificas: string;
-}
 
 interface EmployeeEditFormProps {
   employee: Employee;
@@ -224,7 +214,11 @@ export default function EmployeeEditForm({ employee, onSuccess, onCancel }: Empl
                       <Textarea
                         placeholder="Ej: Disponible mañanas y tardes, no noches..."
                         rows={3}
-                        {...field}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
                       />
                     </FormControl>
                     <FormMessage />
@@ -242,7 +236,11 @@ export default function EmployeeEditForm({ employee, onSuccess, onCancel }: Empl
                       <Textarea
                         placeholder="Ej: No puede trabajar martes por estudios..."
                         rows={3}
-                        {...field}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
                       />
                     </FormControl>
                     <FormMessage />

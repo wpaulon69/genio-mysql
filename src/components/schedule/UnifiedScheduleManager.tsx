@@ -392,7 +392,7 @@ export default function UnifiedScheduleManager({
                     initialShifts={selectedScheduleToDisplay.shifts || []}
                     initialScheduleName={selectedScheduleToDisplay.horario_nombre || ''}
                     allEmployees={employees}
-                    targetService={serviceInfo}
+                    targetService={serviceInfo || null}
                     month={selectedMonthView}
                     year={selectedYearView}
                     holidays={holidays}
@@ -421,7 +421,7 @@ export default function UnifiedScheduleManager({
                     initialShifts={scheduleToEdit.shifts || []}
                     initialScheduleName={scheduleToEdit.horario_nombre || `Horario ${scheduleToEdit.id}`}
                     allEmployees={employees}
-                    targetService={serviceInfo}
+                    targetService={serviceInfo || null}
                     month={selectedMonthView}
                     year={selectedYearView}
                     holidays={holidays}
@@ -461,7 +461,9 @@ export default function UnifiedScheduleManager({
                         <p><strong>Debug Info:</strong></p>
                         <p>targetServiceId: {targetServiceId}</p>
                         <p>API URL: /api/services/{targetServiceId}</p>
-                        <p>Error: {serviceError.message}</p>
+                        {/* @ts-ignore */}
+                        {/* @ts-ignore */}
+                        <p>Error: {(serviceError as any)?.message}</p>
                       </div>
                     )}
                   </div>

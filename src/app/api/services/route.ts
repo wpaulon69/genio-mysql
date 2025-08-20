@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { getConnection } from '@/lib/mysql/config';
+import { hasPermission, PERMISSIONS } from '@/lib/auth/permissions';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +19,22 @@ export async function GET(request: NextRequest) {
         SELECT 
           id_servicio,
           nombre_servicio,
-          descripcion
+          descripcion,
+          habilitar_turno_noche,
+          targetCompleteWeekendsOff,
+          notas_adicionales,
+          dotacion_objetivo_lunes_a_viernes_mananas,
+          dotacion_objetivo_lunes_a_viernes_tardes,
+          dotacion_objetivo_lunes_a_viernes_noche,
+          dotacion_objetivo_sab_dom_feriados_mananas,
+          dotacion_objetivo_sab_dom_feriados_tardes,
+          dotacion_objetivo_sab_dom_feriados_noche,
+          max_dias_trabajo_consecutivos,
+          max_descansos_consecutivos,
+          dias_trabajo_consecutivos_preferidos,
+          dias_descanso_consecutivos_preferidos,
+          min_descansos_requeridos_antes_de_trabajar,
+          fds_descanso_completo_objetivo
         FROM servicios 
         ORDER BY nombre_servicio ASC
       `);
@@ -46,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Solo administradores pueden crear servicios
-    if (session.user.role.name !== 'ADMIN') {
+    if (!hasPermission(session.user, PERMISSIONS.MANAGE_ALL_SERVICES)) {
       return NextResponse.json({ error: 'Sin permisos suficientes' }, { status: 403 });
     }
 
@@ -111,7 +127,7 @@ export async function PUT(request: NextRequest) {
     
     try {
       // Verificar permisos: Admin puede editar cualquier servicio, Jefe de servicio solo el suyo
-      if (session.user.role.name !== 'ADMIN') {
+      if (!hasPermission(session.user, PERMISSIONS.MANAGE_ALL_SERVICES)) {
         if (!session.user.serviceId || session.user.serviceId !== serviceData.id_servicio) {
           return NextResponse.json({ error: 'Sin permisos para editar este servicio' }, { status: 403 });
         }
@@ -168,7 +184,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Solo administradores pueden eliminar servicios
-    if (session.user.role.name !== 'ADMIN') {
+    if (!hasPermission(session.user, PERMISSIONS.MANAGE_ALL_SERVICES)) {
       return NextResponse.json({ error: 'Sin permisos suficientes' }, { status: 403 });
     }
 

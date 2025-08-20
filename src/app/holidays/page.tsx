@@ -12,7 +12,7 @@ import type { Holiday } from '@/lib/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { PERMISSIONS } from '@/lib/auth/permissions';
+import * as AuthPermissions from '@/lib/auth/permissions';
 
 interface HolidayPageProps {}
 
@@ -114,7 +114,7 @@ export default function HolidaysPage({}: HolidayPageProps) {
   };
 
   return (
-    <ProtectedRoute permission={PERMISSIONS.MANAGE_HOLIDAYS}>
+    <ProtectedRoute permission={AuthPermissions.PERMISSIONS.MANAGE_HOLIDAYS}>
       <div className="container mx-auto">
         <div className="flex justify-between items-start mb-6">
           <PageHeader

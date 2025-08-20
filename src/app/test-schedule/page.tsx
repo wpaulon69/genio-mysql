@@ -5,8 +5,15 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
+interface ScheduleData {
+  id: string;
+  horario_nombre: string;
+  status: string;
+  shifts: { employeeName: string; date: string; startTime: string; endTime: string; notes: string; }[];
+}
+
 export default function SimpleTestPage() {
-  const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const [selectedSchedule, setSelectedSchedule] = useState<ScheduleData | null>(null);
 
   // Datos de prueba simulados
   const mockSchedule = {

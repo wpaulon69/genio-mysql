@@ -3,8 +3,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Shield, Users, Building, Eye, Settings } from 'lucide-react';
+import React from 'react'; // Import React for React.ComponentType
 
-const roleExplanations = {
+interface RoleExplanationData {
+  title: string;
+  level: number;
+  icon: React.ComponentType<any>;
+  color: string;
+  description: string;
+  permissions: string[];
+  example: string;
+}
+
+const roleExplanations: { [key: string]: RoleExplanationData } = {
   super_admin: {
     title: 'Super Administrador',
     level: 1,
@@ -70,11 +81,15 @@ interface RoleExplanationProps {
 }
 
 export default function RoleExplanation({ roleId, showAll = false }: RoleExplanationProps) {
-  const rolesToShow = showAll 
-    ? Object.entries(roleExplanations)
-    : roleId 
-      ? [[roleId, roleExplanations[roleId as keyof typeof roleExplanations]]]
-      : [];
+  const rolesToShow: [string, RoleExplanationData][] = [];
+  if (showAll) {
+    rolesToShow.push(...Object.entries(roleExplanations));
+  } else if (roleId) {
+    const roleData = roleExplanations[roleId as keyof typeof roleExplanations];
+    if (roleData) {
+      rolesToShow.push([roleId, roleData]);
+    }
+  }
 
   if (rolesToShow.length === 0) return null;
 
@@ -89,7 +104,7 @@ export default function RoleExplanation({ roleId, showAll = false }: RoleExplana
         </div>
       )}
       
-      {rolesToShow.map(([key, role]) => {
+      {rolesToShow.map(([key, role]: [string, RoleExplanationData]) => {
         if (!role) return null;
         
         const IconComponent = role.icon;

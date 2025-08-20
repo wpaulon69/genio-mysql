@@ -66,7 +66,7 @@ export default function UnauthorizedPage() {
             </Button>
 
             <div className="pt-2 border-t">
-              <SimpleLogoutButton variant="destructive" />
+              <SimpleLogoutButton />
             </div>
           </div>
 

@@ -67,7 +67,7 @@ export default function ServiceScheduleGenerator({ service, employees, holidays 
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['service-schedules'] }); // @ts-ignore
       toast({ title: "Horario Guardado", description: "El horario ha sido guardado exitosamente." });
       setShowGrid(false);
       setGeneratedShifts(null);

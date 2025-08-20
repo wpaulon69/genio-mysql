@@ -23,7 +23,7 @@ import {
   Phone,
   Calendar
 } from 'lucide-react';
-import { PERMISSIONS, canManageEmployees } from '@/lib/auth/permissions';
+import * as AuthPermissions from '@/lib/auth/permissions';
 import { useToast } from '@/hooks/use-toast';
 import EmployeeEditForm from '@/components/service-management/EmployeeEditForm';
 import EmployeePreferencesForm from '@/components/employees/employee-preferences-form';
@@ -125,7 +125,7 @@ export default function ServiceEmployeesPage() {
 
   if (!user?.serviceId) {
     return (
-      <ProtectedRoute requiredPermissions={[PERMISSIONS.MANAGE_SERVICE_EMPLOYEES]}>
+      <ProtectedRoute requiredPermissions={[AuthPermissions.PERMISSIONS.MANAGE_SERVICE_EMPLOYEES]}>
         <div className="container mx-auto">
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6">
@@ -140,7 +140,7 @@ export default function ServiceEmployeesPage() {
   }
 
   return (
-    <ProtectedRoute requiredPermissions={[PERMISSIONS.MANAGE_SERVICE_EMPLOYEES]}>
+    <ProtectedRoute requiredPermissions={[AuthPermissions.PERMISSIONS.MANAGE_SERVICE_EMPLOYEES]}>
       <div className="container mx-auto">
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center space-x-4">

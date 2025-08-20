@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth, usePermission } from '@/lib/auth/hooks';
+import * as AuthPermissions from '@/lib/auth/permissions';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import SimpleLogoutButton from '@/components/auth/SimpleLogoutButton';
 import PageHeader from '@/components/common/page-header';
@@ -8,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Shield, Settings, Activity, UserPlus, Key } from 'lucide-react';
 import Link from 'next/link';
-import { PERMISSIONS } from '@/lib/auth/permissions';
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -19,7 +19,7 @@ export default function AdminPage() {
       description: 'Crear, editar y administrar usuarios del sistema',
       icon: Users,
       href: '/admin/users',
-      permission: PERMISSIONS.MANAGE_USERS,
+      permission: AuthPermissions.PERMISSIONS.MANAGE_USERS,
       color: 'bg-blue-500'
     },
     {
@@ -27,7 +27,7 @@ export default function AdminPage() {
       description: 'Configurar roles y asignar permisos específicos',
       icon: Shield,
       href: '/admin/roles',
-      permission: PERMISSIONS.SYSTEM_SETTINGS,
+      permission: AuthPermissions.PERMISSIONS.SYSTEM_SETTINGS,
       color: 'bg-green-500'
     },
     {
@@ -35,7 +35,7 @@ export default function AdminPage() {
       description: 'Ajustes generales y configuraciones avanzadas',
       icon: Settings,
       href: '/admin/settings',
-      permission: PERMISSIONS.SYSTEM_SETTINGS,
+      permission: AuthPermissions.PERMISSIONS.SYSTEM_SETTINGS,
       color: 'bg-purple-500'
     },
     {
@@ -43,7 +43,7 @@ export default function AdminPage() {
       description: 'Revisar actividad del sistema y sesiones de usuario',
       icon: Activity,
       href: '/admin/audit',
-      permission: PERMISSIONS.SYSTEM_SETTINGS,
+      permission: AuthPermissions.PERMISSIONS.SYSTEM_SETTINGS,
       color: 'bg-orange-500'
     },
     {
@@ -51,7 +51,7 @@ export default function AdminPage() {
       description: 'Asistente para crear nuevos usuarios rápidamente',
       icon: UserPlus,
       href: '/admin/users/create',
-      permission: PERMISSIONS.MANAGE_USERS,
+      permission: AuthPermissions.PERMISSIONS.MANAGE_USERS,
       color: 'bg-indigo-500'
     },
     {
@@ -59,13 +59,13 @@ export default function AdminPage() {
       description: 'Resetear contraseñas de usuarios del sistema',
       icon: Key,
       href: '/admin/passwords',
-      permission: PERMISSIONS.MANAGE_USERS,
+      permission: AuthPermissions.PERMISSIONS.MANAGE_USERS,
       color: 'bg-red-500'
     }
   ];
 
   return (
-    <ProtectedRoute permission={PERMISSIONS.MANAGE_USERS}>
+    <ProtectedRoute permission={AuthPermissions.PERMISSIONS.MANAGE_USERS}>
       <div className="container mx-auto">
         <div className="flex justify-between items-start mb-6">
           <PageHeader

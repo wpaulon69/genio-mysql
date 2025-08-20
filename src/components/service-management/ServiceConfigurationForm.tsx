@@ -10,16 +10,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
+// 1. FIX: Use coerce.boolean() for the checkbox to handle 0/1 from DB.
+//    Remove the complex .refine() as the form logic handles conditional fields.
 const serviceConfigSchema = z.object({
   nombre_servicio: z.string().min(1, "El nombre del servicio es obligatorio"),
   descripcion: z.string().optional(),
-  habilitar_turno_noche: z.boolean(),
+  habilitar_turno_noche: z.coerce.boolean(),
   dotacion_objetivo_lunes_a_viernes_mananas: z.coerce.number().int().min(0),
   dotacion_objetivo_lunes_a_viernes_tardes: z.coerce.number().int().min(0),
   dotacion_objetivo_lunes_a_viernes_noche: z.coerce.number().int().min(0).optional(),
@@ -32,16 +33,7 @@ const serviceConfigSchema = z.object({
   dias_descanso_consecutivos_preferidos: z.coerce.number().int().min(1).max(14),
   min_descansos_requeridos_antes_de_trabajar: z.coerce.number().int().min(0).max(7),
   fds_descanso_completo_objetivo: z.coerce.number().int().min(0).max(5),
-  notas_adicionales: z.string().optional(),
-}).refine((data) => {
-  if (data.habilitar_turno_noche) {
-    return data.dotacion_objetivo_lunes_a_viernes_noche !== undefined && 
-           data.dotacion_objetivo_sab_dom_feriados_noche !== undefined;
-  }
-  return true;
-}, {
-  message: "Los campos de turno noche son requeridos cuando está habilitado",
-  path: ["habilitar_turno_noche"]
+  notas_adicionales: z.string().nullable().optional(),
 });
 
 type ServiceConfigFormData = z.infer<typeof serviceConfigSchema>;
@@ -88,37 +80,56 @@ export default function ServiceConfigurationForm({
   const enableNightShiftValue = form.watch('habilitar_turno_noche');
 
   useEffect(() => {
-    if (isOpen && service) {
-      form.reset({
-        nombre_servicio: service.nombre_servicio || '',
-        descripcion: service.descripcion || '',
-        habilitar_turno_noche: service.habilitar_turno_noche || false,
-        dotacion_objetivo_lunes_a_viernes_mananas: service.dotacion_objetivo_lunes_a_viernes_mananas || 0,
-        dotacion_objetivo_lunes_a_viernes_tardes: service.dotacion_objetivo_lunes_a_viernes_tardes || 0,
-        dotacion_objetivo_lunes_a_viernes_noche: service.dotacion_objetivo_lunes_a_viernes_noche || 0,
-        dotacion_objetivo_sab_dom_feriados_mananas: service.dotacion_objetivo_sab_dom_feriados_mananas || 0,
-        dotacion_objetivo_sab_dom_feriados_tardes: service.dotacion_objetivo_sab_dom_feriados_tardes || 0,
-        dotacion_objetivo_sab_dom_feriados_noche: service.dotacion_objetivo_sab_dom_feriados_noche || 0,
-        max_dias_trabajo_consecutivos: service.max_dias_trabajo_consecutivos || 6,
-        dias_trabajo_consecutivos_preferidos: service.dias_trabajo_consecutivos_preferidos || 5,
-        max_descansos_consecutivos: service.max_descansos_consecutivos || 3,
-        dias_descanso_consecutivos_preferidos: service.dias_descanso_consecutivos_preferidos || 2,
-        min_descansos_requeridos_antes_de_trabajar: service.min_descansos_requeridos_antes_de_trabajar || 1,
-        fds_descanso_completo_objetivo: service.fds_descanso_completo_objetivo || 1,
-        notas_adicionales: service.notas_adicionales || '',
-      });
+    if (isOpen) {
+      if (service) {
+        // 2. FIX: Robustly reset the form by merging service data with defaults.
+        // This prevents data loss if the service object has nullish values that should override defaults.
+        const defaultValues = form.formState.defaultValues;
+        const mergedValues = { ...defaultValues, ...service };
+        // Explicitly convert nulls to empty strings for Textarea fields
+        if (mergedValues.descripcion === null) {
+          mergedValues.descripcion = '';
+        }
+        if (mergedValues.notas_adicionales === null) {
+          mergedValues.notas_adicionales = '';
+        }
+        // Filter mergedValues to only include properties defined in ServiceConfigFormData
+        const formValues: ServiceConfigFormData = {
+          nombre_servicio: mergedValues.nombre_servicio,
+          descripcion: mergedValues.descripcion,
+          habilitar_turno_noche: mergedValues.habilitar_turno_noche,
+          dotacion_objetivo_lunes_a_viernes_mananas: mergedValues.dotacion_objetivo_lunes_a_viernes_mananas,
+          dotacion_objetivo_lunes_a_viernes_tardes: mergedValues.dotacion_objetivo_lunes_a_viernes_tardes,
+          dotacion_objetivo_lunes_a_viernes_noche: mergedValues.dotacion_objetivo_lunes_a_viernes_noche,
+          dotacion_objetivo_sab_dom_feriados_mananas: mergedValues.dotacion_objetivo_sab_dom_feriados_mananas,
+          dotacion_objetivo_sab_dom_feriados_tardes: mergedValues.dotacion_objetivo_sab_dom_feriados_tardes,
+          dotacion_objetivo_sab_dom_feriados_noche: mergedValues.dotacion_objetivo_sab_dom_feriados_noche,
+          max_dias_trabajo_consecutivos: mergedValues.max_dias_trabajo_consecutivos,
+          dias_trabajo_consecutivos_preferidos: mergedValues.dias_trabajo_consecutivos_preferidos,
+          max_descansos_consecutivos: mergedValues.max_descansos_consecutivos,
+          dias_descanso_consecutivos_preferidos: mergedValues.dias_descanso_consecutivos_preferidos,
+          min_descansos_requeridos_antes_de_trabajar: mergedValues.min_descansos_requeridos_antes_de_trabajar,
+          fds_descanso_completo_objetivo: mergedValues.fds_descanso_completo_objetivo,
+          notas_adicionales: mergedValues.notas_adicionales,
+        };
+        form.reset(formValues);
+      } else {
+        // Reset to defaults for a new service
+        form.reset(form.formState.defaultValues);
+      }
     }
   }, [service, isOpen, form]);
 
   const handleFormSubmit = (data: ServiceConfigFormData) => {
-    const submissionData = { ...data };
+    // 3. FIX: Ensure all original service data is preserved, only updating changed fields.
+    // This prevents fields not present in the form from being wiped out.
+    const submissionData = { ...service, ...data };
+
     if (!submissionData.habilitar_turno_noche) {
       submissionData.dotacion_objetivo_lunes_a_viernes_noche = 0;
       submissionData.dotacion_objetivo_sab_dom_feriados_noche = 0;
     }
-    if (service) {
-      (submissionData as Service).id_servicio = service.id_servicio;
-    }
+    
     onSubmit(submissionData as Service);
   };
 
@@ -135,7 +146,7 @@ export default function ServiceConfigurationForm({
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isLoading) onClose(); }}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Configurar Mi Servicio</DialogTitle>
+          <DialogTitle>{service ? 'Editar Servicio' : 'Añadir Nuevo Servicio'}</DialogTitle>
           <DialogDescription>
             Ajusta las configuraciones, dotaciones objetivo y reglas de trabajo de tu servicio.
           </DialogDescription>
@@ -143,8 +154,7 @@ export default function ServiceConfigurationForm({
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit, onFormError)} className="flex flex-col flex-grow min-h-0">
-            <div className="flex-grow overflow-y-auto max-h-[70vh]">
-              <div className="space-y-6 p-4">
+            <div className="flex-grow overflow-y-auto max-h-[70vh] p-4 space-y-6">
                 {/* Información básica */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Información Básica</h3>
@@ -165,9 +175,6 @@ export default function ServiceConfigurationForm({
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel className="font-normal">Habilitar Turno Noche (N)</FormLabel>
-                          <p className="text-xs text-muted-foreground">
-                            Permite asignar turnos de noche en este servicio
-                          </p>
                         </div>
                       </FormItem>
                     )} />
@@ -176,7 +183,14 @@ export default function ServiceConfigurationForm({
                     <FormItem>
                       <FormLabel>Descripción</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Describa brevemente el servicio" {...field} />
+                        <Textarea 
+                          placeholder="Describa brevemente el servicio"
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -264,7 +278,7 @@ export default function ServiceConfigurationForm({
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <FormField control={form.control} name="max_dias_trabajo_consecutivos" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Máx. Días Trabajo Consecutivos</FormLabel>
+                        <FormLabel>Máx. Días Consecutivos</FormLabel>
                         <FormControl>
                           <Input type="number" min="1" max="14" {...field} />
                         </FormControl>
@@ -273,7 +287,7 @@ export default function ServiceConfigurationForm({
                     )} />
                     <FormField control={form.control} name="dias_trabajo_consecutivos_preferidos" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Días Trabajo Consecutivos Preferidos</FormLabel>
+                        <FormLabel>Días Consecutivos Preferidos</FormLabel>
                         <FormControl>
                           <Input type="number" min="1" max="14" {...field} />
                         </FormControl>
@@ -291,7 +305,7 @@ export default function ServiceConfigurationForm({
                     )} />
                     <FormField control={form.control} name="dias_descanso_consecutivos_preferidos" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Días Descanso Consecutivos Preferidos</FormLabel>
+                        <FormLabel>Descansos Consecutivos Preferidos</FormLabel>
                         <FormControl>
                           <Input type="number" min="1" max="14" {...field} />
                         </FormControl>
@@ -300,7 +314,7 @@ export default function ServiceConfigurationForm({
                     )} />
                     <FormField control={form.control} name="min_descansos_requeridos_antes_de_trabajar" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Mín. Descansos Antes de Trabajar</FormLabel>
+                        <FormLabel>Mín. Descansos Previos</FormLabel>
                         <FormControl>
                           <Input type="number" min="0" max="7" {...field} />
                         </FormControl>
@@ -309,7 +323,7 @@ export default function ServiceConfigurationForm({
                     )} />
                     <FormField control={form.control} name="fds_descanso_completo_objetivo" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>FDS Descanso Completo Objetivo</FormLabel>
+                        <FormLabel>FDS Libres Objetivo</FormLabel>
                         <FormControl>
                           <Input type="number" min="0" max="5" {...field} />
                         </FormControl>
@@ -318,26 +332,24 @@ export default function ServiceConfigurationForm({
                     )} />
                   </div>
                 </div>
-
                 <Separator />
-
-                {/* Notas adicionales */}
-                <div className="space-y-4">
-                  <FormField control={form.control} name="notas_adicionales" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notas Adicionales</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Agregue cualquier información adicional sobre las reglas o configuraciones especiales del servicio..."
-                          rows={3}
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                </div>
-              </div>
+                <FormField control={form.control} name="notas_adicionales" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notas Adicionales</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Agregue cualquier información adicional..."
+                        rows={3}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
             </div>
 
             <DialogFooter className="flex-shrink-0 pt-4 border-t bg-background">
@@ -347,7 +359,7 @@ export default function ServiceConfigurationForm({
                 </Button>
                 <Button type="submit" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Guardar Configuración
+                  Guardar Cambios
                 </Button>
               </div>
             </DialogFooter>

@@ -16,7 +16,7 @@ export interface EmployeeState {
   consecutiveWorkDays: number;
   consecutiveRestDays: number;
   shiftsThisMonth: number;
-  lastShiftType?: AIShift['notes'] | 'M' | 'T' | 'N' | 'D' | 'LAO' | 'LM' | 'C' | 'F';
+  lastShiftType?: 'M' | 'T' | 'N' | 'D' | 'LAO' | 'LM' | 'C' | 'F' | 'V' | '';
   lastActualWorkShiftEndTime: Date | null;
   completeWeekendsOffThisMonth: number;
 }
@@ -78,7 +78,7 @@ export function initializeEmployeeStatesFromHistory(
         return shiftDateOnly === dateToCheckStr && s.employeeName === emp.nombre;
       });
 
-      let todayShiftType: string;
+      let todayShiftType: 'M' | 'T' | 'N' | 'D' | 'LAO' | 'LM' | 'C' | 'F' | 'V' | '';
       
       if (shiftToday) {
         todayShiftType = getShiftTypeForEval(shiftToday);
@@ -112,7 +112,7 @@ export function initializeEmployeeStatesFromHistory(
         currentConsecutiveRest = 0;
         
         if (shiftToday) {
-          const { endTime: shiftEndTimeStr } = getShiftDetails(todayShiftType);
+          const { endTime: shiftEndTimeStr } = getShiftDetails(todayShiftType as 'M' | 'T' | 'N');
           lastWorkShiftEnd = getShiftDateTime(dateToCheck, shiftEndTimeStr, todayShiftType === 'N');
         }
       } else {

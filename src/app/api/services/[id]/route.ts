@@ -88,7 +88,7 @@ export async function GET(
     } finally {
       connection.release();
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ API /services/[id] - Error completo:', error);
     console.error('❌ API /services/[id] - Error message:', error.message);
     console.error('❌ API /services/[id] - Error stack:', error.stack);
@@ -133,8 +133,8 @@ export async function PUT(
     
     try {
       await connection.execute(`
-                  UPDATE servicios SET
-          nombre_servicio = ?, descripcion = ?, habilitar_turno_noche = ?, targetCompleteWeekendsOff = ?,
+        UPDATE servicios SET
+          nombre_servicio = ?, descripcion = ?, habilitar_turno_noche = ?,
           dotacion_objetivo_lunes_a_viernes_mananas = ?, dotacion_objetivo_lunes_a_viernes_tardes = ?, dotacion_objetivo_lunes_a_viernes_noche = ?,
           dotacion_objetivo_sab_dom_feriados_mananas = ?, dotacion_objetivo_sab_dom_feriados_tardes = ?, dotacion_objetivo_sab_dom_feriados_noche = ?,
           max_dias_trabajo_consecutivos = ?, dias_trabajo_consecutivos_preferidos = ?, max_descansos_consecutivos = ?,
@@ -145,7 +145,6 @@ export async function PUT(
         serviceData.nombre_servicio,
         serviceData.descripcion || null,
         serviceData.habilitar_turno_noche ? 1 : 0,
-        serviceData.targetCompleteWeekendsOff || 0,
         serviceData.dotacion_objetivo_lunes_a_viernes_mananas || 0,
         serviceData.dotacion_objetivo_lunes_a_viernes_tardes || 0,
         serviceData.dotacion_objetivo_lunes_a_viernes_noche || 0,
@@ -166,7 +165,7 @@ export async function PUT(
     } finally {
       connection.release();
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating service:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },

@@ -21,7 +21,7 @@ const step1Schema = z.object({
 });
 
 const step2Schema = z.object({
-  habilitar_turno_noche: z.boolean(),
+  habilitar_turno_noche: z.coerce.boolean(),
   dotacion_objetivo_lunes_a_viernes_mananas: z.coerce.number().int().nonnegative(),
   dotacion_objetivo_lunes_a_viernes_tardes: z.coerce.number().int().nonnegative(),
   dotacion_objetivo_lunes_a_viernes_noche: z.coerce.number().int().nonnegative().optional(),
@@ -37,24 +37,7 @@ const step2Schema = z.object({
   notas_adicionales: z.string().optional(),
 });
 
-const serviceSchema = step1Schema.merge(step2Schema).superRefine((data, ctx) => {
-  if (data.habilitar_turno_noche) {
-    if (data.dotacion_objetivo_lunes_a_viernes_noche === undefined || data.dotacion_objetivo_lunes_a_viernes_noche === null || isNaN(data.dotacion_objetivo_lunes_a_viernes_noche)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['dotacion_objetivo_lunes_a_viernes_noche'],
-        message: 'Requerido si el turno noche está habilitado.',
-      });
-    }
-    if (data.dotacion_objetivo_sab_dom_feriados_noche === undefined || data.dotacion_objetivo_sab_dom_feriados_noche === null || isNaN(data.dotacion_objetivo_sab_dom_feriados_noche)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['dotacion_objetivo_sab_dom_feriados_noche'],
-        message: 'Requerido si el turno noche está habilitado.',
-      });
-    }
-  }
-});
+const serviceSchema = step1Schema.merge(step2Schema);
 
 type ServiceFormData = z.infer<typeof serviceSchema>;
 

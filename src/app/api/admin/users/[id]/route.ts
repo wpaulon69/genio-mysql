@@ -2,13 +2,13 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
 import { updateUser, deactivateUser, activateUser } from '@/lib/mysql/users';
-import { PERMISSIONS } from '@/lib/auth/permissions';
+import * as AuthPermissions from '@/lib/auth/permissions';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user || !session.user.permissions.includes(PERMISSIONS.MANAGE_USERS)) {
+    if (!session?.user || !session.user.permissions.includes(AuthPermissions.PERMISSIONS.MANAGE_USERS)) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -47,7 +47,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user || !session.user.permissions.includes(PERMISSIONS.MANAGE_USERS)) {
+    if (!session?.user || !session.user.permissions.includes(AuthPermissions.PERMISSIONS.MANAGE_USERS)) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 

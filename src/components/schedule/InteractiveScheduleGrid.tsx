@@ -113,12 +113,13 @@ export default function InteractiveScheduleGrid({
   }, [initialScheduleName]);
 
   // Helper function to get full service data
-  const getFullService = async () => {
+  const getFullService = async (): Promise<Service | null> => {
+    if (!targetService) return null; // If targetService is null, return null immediately
     try {
       const serviceResponse = await fetch(`/api/services/${targetService.id_servicio}`);
       return serviceResponse.ok ? await serviceResponse.json() : targetService;
     } catch (error) {
-      console.warn('Could not fetch full service data, using basic service info');
+      console.warn('Could not fetch full service data, using basic service info:', error);
       return targetService;
     }
   };
@@ -138,10 +139,17 @@ export default function InteractiveScheduleGrid({
         if (prevSchedules.length > 0) previousMonthShifts = prevSchedules[0].shifts;
       }
 
+      const serviceToEvaluate = await getFullService();
+      if (!serviceToEvaluate) {
+        console.error('Cannot re-evaluate: targetService is null.');
+        setIsEvaluating(false);
+        return;
+      }
+
       const response = await fetch('/api/evaluate-schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shifts: editableShifts, service: await getFullService(), month, year, employees: allEmployees, holidays, previousMonthShifts }),
+        body: JSON.stringify({ shifts: editableShifts, service: serviceToEvaluate, month, year, employees: allEmployees, holidays, previousMonthShifts }),
       });
 
       if (!response.ok) throw new Error((await response.json()).message || 'Error al evaluar');
@@ -175,10 +183,20 @@ export default function InteractiveScheduleGrid({
         if (prevSchedules.length > 0) previousMonthShifts = prevSchedules[0].shifts;
       }
 
+      const serviceToEvaluate = await getFullService();
+      if (!serviceToEvaluate) {
+        console.error("No se pudo re-evaluar antes de guardar: targetService es null.");
+        setIsEvaluating(false);
+        onSave(editableShifts, status, currentEvaluationResult);
+        setHasUnsavedChanges(false);
+        setIsSaveModalOpen(false);
+        return;
+      }
+
       const response = await fetch('/api/evaluate-schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shifts: editableShifts, service: await getFullService(), month, year, employees: allEmployees, holidays, previousMonthShifts }),
+        body: JSON.stringify({ shifts: editableShifts, service: serviceToEvaluate, month, year, employees: allEmployees, holidays, previousMonthShifts }),
       });
 
       if (response.ok) {
