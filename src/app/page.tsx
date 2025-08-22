@@ -90,6 +90,24 @@ export default function DashboardPage() {
       aiHint: 'graficos datos',
       label: 'Informes'
     },
+    {
+      title: 'Personal por Servicio',
+      description: 'Gestiona el personal asignado a cada servicio.',
+      icon: UsersRound, // Reutilizando UsersRound, puedes cambiarlo si hay otro más específico
+      href: '/service-management/employees',
+      img: 'https://placehold.co/600x400.png',
+      aiHint: 'personal por servicio',
+      label: 'Personal'
+    },
+    {
+      title: 'Feriados',
+      description: 'Administra los días feriados y su impacto en la planificación.',
+      icon: CalendarDays, // Reutilizando CalendarDays
+      href: '/holidays',
+      img: 'https://placehold.co/600x400.png',
+      aiHint: 'gestion feriados',
+      label: 'Feriados'
+    },
   ];
 
   return (
