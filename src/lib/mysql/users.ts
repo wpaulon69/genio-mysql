@@ -11,7 +11,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
         ur.name as role_name,
         ur.display_name as role_display_name,
         ur.level as role_level,
-        GROUP_CONCAT(p.name) as permissions
+        GROUP_CONCAT(p.id) as permissions
       FROM users u
       JOIN user_roles ur ON u.role_id = ur.id
       LEFT JOIN role_permissions rp ON ur.id = rp.role_id
@@ -27,7 +27,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
     }
 
     const userData = users[0];
-    const permissions = userData.permissions ? userData.permissions.split(',') : [];
+    const permissions = userData.permissions ? userData.permissions.split(',').map(p => p.trim()) : [];
 
     return {
       id: userData.id,
@@ -63,7 +63,7 @@ export async function getUserById(id: string): Promise<User | null> {
         ur.name as role_name,
         ur.display_name as role_display_name,
         ur.level as role_level,
-        GROUP_CONCAT(p.name) as permissions
+        GROUP_CONCAT(p.id) as permissions
       FROM users u
       JOIN user_roles ur ON u.role_id = ur.id
       LEFT JOIN role_permissions rp ON ur.id = rp.role_id
@@ -79,7 +79,7 @@ export async function getUserById(id: string): Promise<User | null> {
     }
 
     const userData = users[0];
-    const permissions = userData.permissions ? userData.permissions.split(',') : [];
+    const permissions = userData.permissions ? userData.permissions.split(',').map(p => p.trim()) : [];
 
     return {
       id: userData.id,

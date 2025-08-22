@@ -59,7 +59,9 @@ export default function ServiceEmployeesPage() {
     queryFn: async () => {
       const response = await fetch('/api/service-management/employees');
       if (!response.ok) throw new Error('Error fetching employees');
-      return response.json();
+      const data = await response.json();
+      console.log('Frontend - assignedEmployees data:', data);
+      return data;
     },
     enabled: !!user?.serviceId
   });
@@ -99,7 +101,7 @@ export default function ServiceEmployeesPage() {
       const response = await fetch(`/api/service-management/employees/${selectedEmployee.id_empleado}/preferences`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({ ...data, id_empleado: selectedEmployee.id_empleado })
       });
       
       if (!response.ok) {

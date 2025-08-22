@@ -10,7 +10,7 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user || !session.user.permissions.includes(AuthPermissions.PERMISSIONS.MANAGE_USERS)) {
+    if (!session?.user || !session.user.permissions.map(p => p.trim().toLowerCase()).includes(AuthPermissions.PERMISSIONS.MANAGE_USERS.toLowerCase())) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user || !session.user.permissions.includes(AuthPermissions.PERMISSIONS.MANAGE_USERS)) {
+    if (!session?.user || !session.user.permissions.map(p => p.trim().toLowerCase()).includes(AuthPermissions.PERMISSIONS.MANAGE_USERS.toLowerCase())) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 

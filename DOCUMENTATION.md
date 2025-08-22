@@ -124,7 +124,7 @@ El proyecto sigue una estructura típica para aplicaciones Next.js con el App Ro
 - **Evaluación de Horarios:** Una vez que se genera un horario completo, la función `evaluateScheduleMetrics` (de `src/lib/scheduler/evaluation.ts`) lo analiza. Calcula una puntuación detallada (dividida en cumplimiento de reglas del servicio y bienestar del empleado) y genera una lista de violaciones de reglas (errores y advertencias). El generador selecciona el mejor horario de todos los intentos basándose en esta puntuación.
 - **Edición Manual:** Los horarios (ya sean borradores o copias de uno publicado) se pueden modificar manualmente a través de una grilla interactiva, permitiendo ajustes finos.
 - **Componentes Clave:** `src/app/schedule/page.tsx`, `src/components/schedule/shift-generator-form.tsx`, `src/components/schedule/InteractiveScheduleGrid.tsx`, `src/components/schedule/schedule-evaluation-display.tsx`.
-- **Datos MySQL:** Tabla `monthly_schedules`. Ver `src/lib/mysql/monthlySchedules.ts` para la lógica de guardado, recuperación y estados de los horarios.
+- **Datos MySQL:** Tabla `horarios`. Ver `src/lib/mysql/monthlySchedules.ts` para la lógica de guardado, recuperación y estados de los horarios.
 
 ### 4.5. Informes y Analíticas
 - Proporciona información sobre la utilización del personal y las operaciones.
@@ -171,7 +171,7 @@ Los componentes específicos de cada módulo (ej. `service-form.tsx`, `employee-
     - `turnos_fijos`: Almacena las preferencias de turnos semanales de cada empleado.
     - `asignaciones_empleado`: Para licencias y otras asignaciones especiales.
     - `holidays`: Para los días feriados. Ver `src/lib/mysql/holidays.ts`.
-    - `monthly_schedules`: Para los horarios generados (con sus estados `draft`, `published`, `archived`). Ver `src/lib/mysql/monthlySchedules.ts`.
+    - `horarios`: Para los horarios generados (con sus estados `draft`, `published`, `archived`). Ver `src/lib/mysql/monthlySchedules.ts`.
 - La configuración de la conexión a la base de datos se gestiona a través de variables de entorno.
 - Las funciones CRUD para cada tabla están en `src/lib/mysql/`.
 

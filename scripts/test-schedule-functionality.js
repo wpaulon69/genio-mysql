@@ -20,11 +20,11 @@ async function testScheduleFunctionality() {
     console.log('\n📋 Verificando estructura de tablas de horarios...');
     
     const [monthlySchedulesTable] = await connection.execute(`
-      SHOW TABLES LIKE 'monthly_schedules'
+      SHOW TABLES LIKE 'horarios'
     `);
     
     if (monthlySchedulesTable.length > 0) {
-      console.log('✅ Tabla monthly_schedules existe');
+      console.log('✅ Tabla horarios existe');
       
       // Verificar algunos horarios existentes
       const [schedules] = await connection.execute(`
@@ -38,7 +38,7 @@ async function testScheduleFunctionality() {
           score,
           createdAt,
           updatedAt
-        FROM monthly_schedules 
+        FROM horarios 
         WHERE serviceId = 1
         ORDER BY createdAt DESC
         LIMIT 5
@@ -49,7 +49,7 @@ async function testScheduleFunctionality() {
         console.log(`- ${schedule.horario_nombre || `Horario ${schedule.id}`} (${schedule.month}/${schedule.year}) - ${schedule.status} - Puntaje: ${schedule.score || 'N/A'}`);
       });
     } else {
-      console.log('❌ Tabla monthly_schedules no existe');
+      console.log('❌ Tabla horarios no existe');
     }
 
     // Verificar servicios

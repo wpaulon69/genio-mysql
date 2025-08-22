@@ -89,24 +89,7 @@ export default function EmployeesPage({}: EmployeesPageProps) {
     },
   });
 
-  const updatePreferencesMutation = useMutation({
-    mutationFn: async ({ employeeId, preferences }: { employeeId: number, preferences: any }) => {
-      const response = await fetch('/api/employees', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_empleado: employeeId, ...preferences }),
-      });
-      if (!response.ok) throw new Error('Failed to update preferences');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      toast({ title: "Preferencias Actualizadas", description: "Las preferencias del empleado han sido guardadas." });
-    },
-    onError: (err: any) => {
-      toast({ variant: "destructive", title: "Error", description: `No se pudieron guardar las preferencias: ${err.message}` });
-    },
-  });
+  
 
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (employeeId: number) => {
@@ -142,13 +125,7 @@ export default function EmployeesPage({}: EmployeesPageProps) {
     deleteEmployeeMutation.mutate(employeeId);
   };
 
-  const handleUpdatePreferences = (employeeId: number, preferences: any) => {
-    const originalEmployee = employees.find(e => e.id_empleado === employeeId);
-    if (originalEmployee) {
-      const updatedEmployee = { ...originalEmployee, ...preferences };
-      updateEmployeeMutation.mutate(updatedEmployee);
-    }
-  };
+  
   
   const openFormForNew = () => {
     setEditingEmployee(null);
@@ -191,11 +168,9 @@ export default function EmployeesPage({}: EmployeesPageProps) {
       <EmployeeList
         employees={employees}
         services={services}
-        assignmentTypes={assignmentTypes}
         onEdit={handleEditEmployee}
         onDelete={handleDeleteEmployee}
-        onUpdatePreferences={handleUpdatePreferences}
-        isLoading={deleteEmployeeMutation.isPending || updatePreferencesMutation.isPending}
+        isLoading={deleteEmployeeMutation.isPending}
       />
       <EmployeeForm
         isOpen={isFormOpen}

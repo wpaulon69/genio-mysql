@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         // Obtener turnos fijos
         const [turnosFijos] = await connection.execute(`
           SELECT dia_semana, tipo_turno
-          FROM turnos_fijos_empleado
+          FROM turnos_fijos
           WHERE id_empleado = ?
           ORDER BY FIELD(dia_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo')
         `, [employee.id_empleado]) as any;

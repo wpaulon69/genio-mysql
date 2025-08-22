@@ -1,0 +1,53 @@
+GET /service-management 200 in 157ms
+ GET /api/auth/session 200 in 91ms
+Error fetching service stats: ReferenceError: maxYear is not defined
+    at GET (file://E%3A/genio-master/src/app/api/service-management/stats/route.ts:128:30)
+  126 |       }
+  127 |
+> 128 |       console.log('maxYear:', maxYear, 'maxMonth:', maxMonth);
+      |                              ^
+  129 |       console.log('nextScheduleYear (before stats):', nextScheduleYear, 'nextScheduleMonth (before stats):', 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                     nextScheduleMonth);
+  130 |
+  131 |       const stats = {
+ GET /api/service-management/stats 500 in 162ms
+Error fetching service stats: ReferenceError: maxYear is not defined
+    at GET (file://E%3A/genio-master/src/app/api/service-management/stats/route.ts:128:30)
+  126 |       }
+  127 |
+> 128 |       console.log('maxYear:', maxYear, 'maxMonth:', maxMonth);
+      |                              ^
+  129 |       console.log('nextScheduleYear (before stats):', nextScheduleYear, 'nextScheduleMonth (before stats):', nextScheduleMonth);
+  130 |
+  131 |       const stats = {
+ GET /api/service-management/stats 500 in 128ms
+Error fetching service stats: ReferenceError: maxYear is not defined
+    at GET (file://E%3A/genio-master/src/app/api/service-management/stats/route.ts:128:30)
+  126 |       }
+  127 |
+> 128 |       console.log('maxYear:', maxYear, 'maxMonth:', maxMonth);
+      |                              ^
+  129 |       console.log('nextScheduleYear (before stats):', nextScheduleYear, 'nextScheduleMonth (before stats):', nextScheduleMonth);
+  130 |
+  131 |       const stats = {
+ GET /api/service-management/stats 500 in 119ms

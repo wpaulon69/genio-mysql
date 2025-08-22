@@ -5,8 +5,8 @@ El panel de "Mi Servicio" mostraba el error "No se pudieron cargar las estadíst
 
 ## Problemas Encontrados
 
-### 1. Tabla `monthly_schedules` Inexistente o Estructura Incorrecta
-El API intentaba consultar la tabla `monthly_schedules` con una estructura específica que podría no existir.
+### 1. Tabla `horarios` Inexistente o Estructura Incorrecta
+El API intentaba consultar la tabla `horarios` con una estructura específica que podría no existir.
 
 ### 2. Manejo de Errores Insuficiente
 - El API no manejaba errores de consultas SQL
@@ -20,12 +20,12 @@ El cálculo de cobertura era completamente aleatorio en lugar de basarse en dato
 
 ### 1. API de Estadísticas (`src/app/api/service-management/stats/route.ts`)
 
-#### Manejo Robusto de `monthly_schedules`:
+#### Manejo Robusto de `horarios`:
 ```typescript
 // ANTES - Podía fallar si la tabla no existe
 const [activeSchedule] = await connection.execute(`
   SELECT COUNT(*) as count
-  FROM monthly_schedules 
+  FROM horarios 
   WHERE service_id = ? 
   AND YEAR(month_year) = ? 
   AND MONTH(month_year) = ?
@@ -36,7 +36,7 @@ let activeScheduleCount = 0;
 try {
   const [activeSchedule] = await connection.execute(`
     SELECT COUNT(*) as count
-    FROM monthly_schedules 
+    FROM horarios 
     WHERE service_id = ? 
     AND YEAR(STR_TO_DATE(CONCAT(year, '-', month, '-01'), '%Y-%m-%d')) = ? 
     AND MONTH(STR_TO_DATE(CONCAT(year, '-', month, '-01'), '%Y-%m-%d')) = ?
@@ -145,7 +145,7 @@ const { data: stats, isLoading, error } = useQuery({
 - ✅ Logging de warnings para debugging
 
 ### Robustez:
-- ✅ Funciona aunque `monthly_schedules` no exista
+- ✅ Funciona aunque `horarios` no exista
 - ✅ Cálculos basados en datos reales disponibles
 - ✅ Valores por defecto seguros
 - ✅ Validación de datos antes de mostrar

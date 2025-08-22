@@ -1,121 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/config';
-import { hasPermission } from '@/lib/auth/permissions';
 import { getConnection } from '@/lib/mysql/config';
+import { hasPermission } from '@/lib/auth/permissions';
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const connection = await getConnection();
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    if (!hasPermission(session.user, 'MANAGE_SERVICE_EMPLOYEES')) {
-      return NextResponse.json({ error: 'Sin permisos suficientes' }, { status: 403 });
-    }
-
-    if (!session.user.serviceId) {
-      return NextResponse.json({ error: 'Usuario sin servicio asignado' }, { status: 400 });
-    }
-
     const resolvedParams = await params;
-    const employeeId = parseInt(resolvedParams.id);
-    const serviceId = session.user.serviceId;
-    const { trabaja_feriados, turnos_fijos, asignaciones } = await request.json();
+    const employeeId = resolvedParams.id;
 
-    const connection = await getConnection();
-    
-    try {
-      // Verificar que el empleado pertenece al servicio del usuario
-      const [employee] = await connection.execute(`
-        SELECT id_empleado, nombre, id_servicio
-        FROM empleados 
-        WHERE id_empleado = ?
-      `, [employeeId]) as any;
-
-      if (employee.length === 0) {
-        return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
-      }
-
-      if (employee[0].id_servicio !== serviceId) {
-        return NextResponse.json({ 
-          error: 'El empleado no pertenece a tu servicio' 
-        }, { status: 403 });
-      }
-
-      // Iniciar transacción
-      await connection.beginTransaction();
-
-      try {
-        // Actualizar preferencia de feriados
-        await connection.execute(`
-          UPDATE empleados 
-          SET trabaja_feriados = ?
-          WHERE id_empleado = ?
-        `, [trabaja_feriados ? 1 : 0, employeeId]);
-
-        // Eliminar turnos fijos existentes
-        await connection.execute(`
-          DELETE FROM turnos_fijos_empleado 
-          WHERE id_empleado = ?
-        `, [employeeId]);
-
-        // Insertar nuevos turnos fijos
-        if (turnos_fijos && turnos_fijos.length > 0) {
-          for (const turno of turnos_fijos) {
-            await connection.execute(`
-              INSERT INTO turnos_fijos_empleado (id_empleado, dia_semana, tipo_turno)
-              VALUES (?, ?, ?)
-            `, [employeeId, turno.dia_semana, turno.tipo_turno]);
-          }
-        }
-
-        // Eliminar asignaciones existentes futuras
-        await connection.execute(`
-          DELETE FROM asignaciones_empleado 
-          WHERE id_empleado = ? AND fecha_inicio >= CURDATE()
-        `, [employeeId]);
-
-        // Insertar nuevas asignaciones
-        if (asignaciones && asignaciones.length > 0) {
-          for (const asignacion of asignaciones) {
-            await connection.execute(`
-              INSERT INTO asignaciones_empleado (id_empleado, id_tipo_asignacion, fecha_inicio, fecha_fin, descripcion)
-              VALUES (?, ?, ?, ?, ?)
-            `, [
-              employeeId, 
-              asignacion.id_tipo_asignacion, 
-              asignacion.fecha_inicio, 
-              asignacion.fecha_fin,
-              asignacion.descripcion || null
-            ]);
-          }
-        }
-
-        await connection.commit();
-
-        return NextResponse.json({ 
-          message: 'Preferencias actualizadas exitosamente',
-          employeeId,
-          employeeName: employee[0].nombre
-        });
-      } catch (error) {
-        await connection.rollback();
-        throw error;
-      }
-    } finally {
-      connection.release();
+    if (!session?.user || !hasPermission(session.user, 'MANAGE_SERVICE_EMPLOYEES')) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
-  } catch (error) {
-    console.error('Error updating employee preferences:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
+
+    if (!employeeId) {
+      return NextResponse.json({ message: 'ID de empleado es requerido.' }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const {
+      trabaja_feriados,
+      turnos_fijos,
+      asignaciones
+    } = body;
+
+    await connection.beginTransaction();
+
+    // 1. Update basic preferences in empleados table
+    await connection.execute(
+      `UPDATE empleados SET trabaja_feriados = ? WHERE id_empleado = ?`,
+      [trabaja_feriados ? 1 : 0, employeeId]
     );
+
+    // 2. Update turnos_fijos (delete and insert)
+    await connection.execute('DELETE FROM turnos_fijos WHERE id_empleado = ?', [employeeId]);
+    if (turnos_fijos && turnos_fijos.length > 0) {
+      const turnosFijosValues = turnos_fijos.map((turno: any) => [employeeId, turno.dia_semana, turno.tipo_turno]);
+      await connection.query('INSERT INTO turnos_fijos (id_empleado, dia_semana, tipo_turno) VALUES ?', [turnosFijosValues]);
+    }
+
+    // 3. Update asignaciones (delete and insert)
+    await connection.execute('DELETE FROM asignaciones_empleado WHERE id_empleado = ?', [employeeId]);
+    if (asignaciones && asignaciones.length > 0) {
+      const asignacionesValues = asignaciones.map((asig: any) => [
+        employeeId, 
+        asig.id_tipo_asignacion, 
+        asig.fecha_inicio, 
+        asig.fecha_fin, 
+        asig.descripcion
+      ]);
+      await connection.query('INSERT INTO asignaciones_empleado (id_empleado, id_tipo_asignacion, fecha_inicio, fecha_fin, descripcion) VALUES ?', [asignacionesValues]);
+    }
+
+    await connection.commit();
+
+    return NextResponse.json({ message: 'Preferencias de empleado actualizadas exitosamente.' });
+
+  } catch (error: any) {
+    await connection.rollback();
+    console.error('Error updating employee preferences:', error);
+    return NextResponse.json({ message: 'Error interno del servidor al actualizar preferencias.', error: error.message }, { status: 500 });
+  } finally {
+    connection.release();
   }
 }
+

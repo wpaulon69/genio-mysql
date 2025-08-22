@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth/hooks';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -337,7 +338,12 @@ export default function UnifiedScheduleManager({
                   <Card key={schedule.id}>
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between">
-                        <span>{schedule.horario_nombre || `Horario ${schedule.id}`}</span>
+                        <div className="flex items-center gap-2">
+                          <span>{schedule.horario_nombre || `Horario ${schedule.id}`}</span>
+                          <Badge variant={schedule.status === 'published' ? 'default' : schedule.status === 'archived' ? 'outline' : 'secondary'}>
+                            {schedule.status === 'published' ? 'Publicado' : schedule.status === 'archived' ? 'Archivado' : 'Borrador'}
+                          </Badge>
+                        </div>
                         <Button
                           variant="outline"
                           size="sm"
