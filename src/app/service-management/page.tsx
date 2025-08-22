@@ -238,6 +238,26 @@ export default function ServiceManagementDashboard() {
               </Button>
             </CardContent>
           </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <BarChart3 className="mr-2 h-5 w-5 text-blue-500" />
+                Informes y Analíticas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Accede a informes detallados y analíticas sobre la gestión de tu servicio.
+              </p>
+              <Button asChild className="w-full">
+                <Link href="/reports">
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Ver Informes
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Status Indicators */}
