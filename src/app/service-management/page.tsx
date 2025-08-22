@@ -16,7 +16,8 @@ import {
   UserPlus, 
   ClipboardList,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Star
 } from 'lucide-react';
 import { PERMISSIONS } from '@/lib/auth/permissions';
 import Link from 'next/link';
@@ -27,6 +28,11 @@ interface ServiceStats {
   currentMonth: string;
   pendingRequests: number;
   activeSchedule: boolean;
+  totalSchedules: number;
+  publishedSchedules: number;
+  nextScheduleMonth: string;
+  nextScheduleYear: number;
+  averageScheduleScore: number | null;
 }
 
 export default function ServiceManagementDashboard() {
@@ -145,6 +151,18 @@ export default function ServiceManagementDashboard() {
                   <div className="text-2xl font-bold text-orange-600">{stats.pendingRequests}</div>
                   <div className="text-sm text-muted-foreground">Solicitudes Pendientes</div>
                 </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{stats.totalSchedules}</div>
+                  <div className="text-sm text-muted-foreground">Horarios Generados</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{stats.publishedSchedules}</div>
+                  <div className="text-sm text-muted-foreground">Horarios Publicados</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">{stats.nextScheduleMonth}</div>
+                  <div className="text-sm text-muted-foreground">Próximo Horario</div>
+                </div>
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
@@ -223,7 +241,7 @@ export default function ServiceManagementDashboard() {
         </div>
 
         {/* Status Indicators */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -244,6 +262,26 @@ export default function ServiceManagementDashboard() {
                   <Badge variant="outline">{stats?.currentMonth || "N/A"}</Badge>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Star className="mr-2 h-5 w-5" />
+                Puntaje Promedio Horarios
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {stats?.averageScheduleScore !== null ? (
+                <div className="text-2xl font-bold text-yellow-600">
+                  {stats?.averageScheduleScore?.toFixed(2)}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  No hay puntajes disponibles
+                </div>
+              )}
             </CardContent>
           </Card>
 
