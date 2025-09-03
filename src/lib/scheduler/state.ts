@@ -44,31 +44,13 @@ export function initializeEmployeeStatesFromHistory(
   // Reducir lookback a un valor más razonable - solo necesitamos los últimos días del mes anterior
   const lookbackDays = Math.min(Math.max(rulesConfig.maxConsecutiveWorkDays, rulesConfig.maxConsecutiveDaysOff), 5);
 
-
-
   employeesForService.forEach(emp => {
     let currentConsecutiveWork = 0;
     let currentConsecutiveRest = 0;
     let lastTypeEncountered: EmployeeState['lastShiftType'] = undefined;
     let lastWorkShiftEnd: Date | null = null;
 
-
-
     // Procesar días desde el más antiguo al más reciente para calcular secuencias correctamente
-    const debugEmployee = emp.nombre === 'Montu' || emp.nombre === 'Rios';
-    
-    if (debugEmployee) {
-      console.log(`\n🔍 [DEBUG] Procesando ${emp.nombre} - lookbackDays: ${lookbackDays}`);
-      console.log(`📊 Datos del mes anterior disponibles para ${emp.nombre}:`);
-      const employeeShifts = sortedPreviousShifts.filter(s => s.employeeName === emp.nombre);
-      employeeShifts.forEach(shift => {
-        console.log(`   ${shift.date}: ${shift.notes || 'sin_notes'}`);
-      });
-      if (employeeShifts.length === 0) {
-        console.log(`   ❌ NO HAY DATOS para ${emp.nombre} en el mes anterior`);
-      }
-    }
-    
     for (let i = 0; i < lookbackDays; i++) {
       const dateToCheck = subDays(firstDayOfCurrentMonth, lookbackDays - i);
       const dateToCheckStr = format(dateToCheck, 'yyyy-MM-dd');
@@ -85,19 +67,8 @@ export function initializeEmployeeStatesFromHistory(
       } else {
         // Si no hay datos para este día, asumimos descanso (pero con lookback reducido)
         todayShiftType = 'D';
-        if (debugEmployee) {
-          console.log(`     → SIN DATOS, asumiendo descanso`);
-        }
       }
       
-      if (debugEmployee) {
-        console.log(`   ${dateToCheckStr}: ${shiftToday ? 'DATOS' : 'SIN_DATOS'} → ${todayShiftType} (anterior: ${lastTypeEncountered})`);
-        if (dateToCheckStr === '2025-06-30' && !shiftToday) {
-          console.log(`   ⚠️ PROBLEMA: 30/06 no encontrado en datos del mes anterior`);
-          console.log(`   📋 Buscando en:`, sortedPreviousShifts.filter(s => s.employeeName === emp.nombre).map(s => s.date));
-        }
-      }
-
       // Determinar si es día de trabajo o descanso
       const isWorkDay = todayShiftType === 'M' || todayShiftType === 'T' || todayShiftType === 'N';
       const isRestDay = !isWorkDay;
@@ -125,25 +96,7 @@ export function initializeEmployeeStatesFromHistory(
         currentConsecutiveWork = 0;
       }
       
-      if (debugEmployee) {
-        console.log(`     → Trabajo: ${currentConsecutiveWork}, Descanso: ${currentConsecutiveRest}`);
-      }
-      
       lastTypeEncountered = todayShiftType;
-    }
-
-
-    // Debug logging para detectar problemas de inicialización
-    if (emp.nombre === 'Montu' || emp.nombre === 'Rios' || currentConsecutiveRest > 3) {
-      console.log(`🔍 [DEBUG] ${emp.nombre} inicializado:`);
-      console.log(`   - Días de trabajo consecutivos: ${currentConsecutiveWork}`);
-      console.log(`   - Días de descanso consecutivos: ${currentConsecutiveRest}`);
-      console.log(`   - Último tipo encontrado: ${lastTypeEncountered}`);
-      console.log(`   - Días de lookback: ${lookbackDays}`);
-      
-      if (currentConsecutiveRest > 3) {
-        console.warn(`⚠️ POSIBLE ERROR: ${emp.nombre} inicializado con ${currentConsecutiveRest} días de descanso consecutivos`);
-      }
     }
 
     employeeStates[emp.id_empleado] = {
@@ -156,8 +109,6 @@ export function initializeEmployeeStatesFromHistory(
       lastActualWorkShiftEndTime: lastWorkShiftEnd,
       completeWeekendsOffThisMonth: 0
     };
-
-
   });
   return employeeStates;
 }

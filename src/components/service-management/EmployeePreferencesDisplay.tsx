@@ -39,24 +39,12 @@ export default function EmployeePreferencesDisplay({ month, year }: EmployeePref
   const { data: preferences, isLoading, error } = useQuery({
     queryKey: ['employee-preferences', month, year],
     queryFn: async () => {
-      console.log('🔍 [FRONTEND] Haciendo petición a preferencias:', { month, year });
       const response = await fetch(`/api/service-management/employees/preferences?month=${month}&year=${year}`);
-      
-      console.log('📡 [FRONTEND] Respuesta de API:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ [FRONTEND] Error en API:', errorText);
         throw new Error(`Error ${response.status}: ${errorText}`);
       }
-      
-      const data = await response.json();
-      console.log('✅ [FRONTEND] Datos recibidos:', data);
-      return data as EmployeePreference[];
+      return response.json() as Promise<EmployeePreference[]>;
     },
     enabled: !!(month && year), // Solo ejecutar si month y year están disponibles
     retry: 1, // Solo reintentar una vez

@@ -40,24 +40,13 @@ interface RawAdditionalPreference {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 [PREFERENCES API] Iniciando petición...');
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
-      console.log('❌ [PREFERENCES API] No hay sesión de usuario');
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    console.log('👤 [PREFERENCES API] Usuario:', {
-      id: session.user.id,
-      name: session.user.name,
-      role: session.user.role?.name,
-      serviceId: session.user.serviceId
-    });
-
     if (!hasPermission(session.user, 'MANAGE_SERVICE_EMPLOYEES')) {
-      console.log('❌ [PREFERENCES API] Sin permisos MANAGE_SERVICE_EMPLOYEES');
-      console.log('🔍 [PREFERENCES API] Permisos del usuario:', getUserPermissions(session.user));
       return NextResponse.json({ error: 'Sin permisos suficientes' }, { status: 403 });
     }
 
@@ -67,19 +56,13 @@ export async function GET(request: NextRequest) {
     const serviceId = serviceIdParam || session.user.serviceId;
     
     if (!serviceId) {
-      console.log('❌ [PREFERENCES API] Usuario sin serviceId asignado');
       return NextResponse.json({ error: 'Usuario sin servicio asignado' }, { status: 400 });
     }
     
-    console.log('🔍 [PREFERENCES API] ServiceId obtenido de:', serviceIdParam ? 'parámetro' : 'sesión');
-
     const month = searchParams.get('month');
     const year = searchParams.get('year');
 
-    console.log('📅 [PREFERENCES API] Parámetros:', { month, year, serviceId });
-
     if (!month || !year) {
-      console.log('❌ [PREFERENCES API] Faltan parámetros month o year');
       return NextResponse.json({ error: 'Mes y año son requeridos' }, { status: 400 });
     }
     
@@ -87,7 +70,6 @@ export async function GET(request: NextRequest) {
     
     try {
       // Obtener empleados básicos del servicio con preferencias de la tabla empleados
-      console.log('🔍 Buscando empleados para serviceId:', serviceId);
       const [employees] = await connection.execute(`
         SELECT 
           e.id_empleado,
@@ -103,10 +85,7 @@ export async function GET(request: NextRequest) {
         ORDER BY e.nombre
       `, [serviceId]) as any;
       
-      console.log('🔍 Empleados encontrados:', employees.length);
-
       // Obtener turnos fijos para todos los empleados del servicio
-      console.log('🔍 Buscando turnos fijos...');
       const [turnosFijos] = await connection.execute(`
         SELECT 
           tf.id_empleado,
@@ -118,10 +97,7 @@ export async function GET(request: NextRequest) {
         ORDER BY tf.id_empleado, tf.dia_semana
       `, [serviceId]) as any;
       
-      console.log('🔍 Turnos fijos encontrados:', turnosFijos.length);
-
       // Obtener asignaciones activas para el período específico
-      console.log('🔍 Buscando asignaciones...');
       const startOfMonth = `${year}-${month.padStart(2, '0')}-01`;
       const endOfMonth = `${year}-${month.padStart(2, '0')}-31`;
       
@@ -144,10 +120,7 @@ export async function GET(request: NextRequest) {
         ORDER BY a.id_empleado, a.fecha_inicio
       `, [serviceId, endOfMonth, startOfMonth, startOfMonth, endOfMonth]) as any;
       
-      console.log('🔍 Asignaciones encontradas:', asignaciones.length);
-
       // Obtener preferencias adicionales de la tabla empleadopreferencias (si existe)
-      console.log('🔍 Buscando preferencias adicionales...');
       let preferenciasAdicionales = [];
       
       try {
@@ -165,7 +138,6 @@ export async function GET(request: NextRequest) {
         `, [serviceId]) as any;
         
         preferenciasAdicionales = result;
-        console.log('🔍 Preferencias adicionales encontradas:', preferenciasAdicionales.length);
       } catch (tableError: any) {
         console.log('⚠️ [PREFERENCES API] Tabla empleadopreferencias no accesible:', tableError.message);
         preferenciasAdicionales = [];
@@ -194,7 +166,6 @@ export async function GET(request: NextRequest) {
         };
       });
 
-      console.log('✅ Devolviendo preferencias completas:', employeesWithPreferences.length, 'empleados');
       return NextResponse.json(employeesWithPreferences);
     } finally {
       connection.release();

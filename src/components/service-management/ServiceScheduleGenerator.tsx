@@ -115,7 +115,6 @@ export default function ServiceScheduleGenerator({ service, employees, holidays 
             // Buscar el horario publicado más reciente
             const publishedSchedule = prevSchedules.find(s => s.status === 'published') || prevSchedules[0];
             previousMonthShifts = publishedSchedule.shifts;
-            console.log(`📅 Usando horario del mes anterior: ${publishedSchedule.horario_nombre || 'Sin nombre'} (${prevSchedules.length} horarios encontrados)`);
           }
         }
       } catch (prevError) {
